@@ -53,7 +53,6 @@ class Wifi: public ESP8266WiFiClass {
       Serial.printf("Connecting to SSID '%s': \n", ssid);
 
       begin(ssid, password);
-
       wl_status_t wifiStatus;
       while((wifiStatus = status()),
             wifiStatus != WL_CONNECTED &&
@@ -68,7 +67,10 @@ class Wifi: public ESP8266WiFiClass {
       Serial.write('\n');
 
       PrintWiFiDetails();
-    }    
+    }
+
+
+    // void
 
 };
 

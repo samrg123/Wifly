@@ -1,24 +1,29 @@
-#include <SoftwareSerial.h>
 
-#include "wifi.h"
+#include "util.h"
+
+#include "Wifi.h"
+#include "WifiServer.h"
 #include "Display.h"
 #include "Imu.h"
 #include "Timer.h"
 
-using uint = unsigned int;
-
 constexpr uint kBaudRate = 115200;
 
-//constexpr const char* const kSSID = "Shay";
-//constexpr const char* const kWifiPassword = "Shay2012";
+constexpr const char* const kSSID = "Shay";
+constexpr const char* const kWifiPassword = "Shay2012";
 
-constexpr const char* const kSSID = "WiflyHub";
-constexpr const char* const kWifiPassword = "thewifly";
+// constexpr const char* const kSSID = "WiflyHub";
+// constexpr const char* const kWifiPassword = "thewifly";
+
+constexpr uint16 kServerPort = 1234;
+
+
+// #include <unordered_map>
+// using Command = void(*)(Connection& connection, const char* command, uint8 numArgs, const char** args);
+// using CommandMap = unordered_map<const char*, Command>; 
 
 //Note: Required for ESP.getVCC()
 ADC_MODE(ADC_VCC);
-
-#define Warn(mst, fmt...) Serial.printf("WARN - " msg "\n", fmt...)
 
 const char* FlashModeString(FlashMode_t mode) {
   switch(mode) {
@@ -77,6 +82,51 @@ void setup() {
   display.printf("Connecting WIFI:\n'%s'\n\n", kSSID);
   wifi.Connect(kSSID, kWifiPassword);
 
+  //TODO: Implement scrolling text instead of manually having to clear the screen
+  display.Clear();
+  
+  display.printf("Starting Server:\n"
+                 "%s\n"
+                 "Port:%d\n", 
+
+                 wifi.localIP().toString().c_str(), 
+                 kServerPort);
+  
+  wifiServer.Init(kServerPort, [](WifiServer::Connection& connection){
+
+    connection.client.printf("Hello Client: %s:%d | Connected to %s:%d\n", 
+                             connection.client.remoteIP().toString().c_str(), 
+                             connection.client.remotePort(),
+                             connection.client.localIP().toString().c_str(), 
+                             connection.client.localPort()
+                             );
+
+    connection.onReadCallback = [](WifiServer::Connection& connection, size_t numBytes) {
+
+      Serial.printf(
+        "Client %s:%d says (%d): '%.*s'\n", 
+        connection.client.remoteIP().toString().c_str(), 
+        connection.client.remotePort(),                              
+        numBytes,
+        numBytes, &connection.buffer.front()
+      );
+      Serial.flush();
+
+      connection.client.printf(
+        "Client %s:%d says (%d): '%.*s'\n", 
+        connection.client.remoteIP().toString().c_str(), 
+        connection.client.remotePort(),                              
+        numBytes,
+        numBytes, &connection.buffer.front()
+      );
+
+      connection.buffer.clear();
+    };
+
+  });
+
+  delay(10000);
+
   display.println("Done!");
 }
 
@@ -97,17 +147,21 @@ void loop() {
   sensors_event_t a, g, temp;
   imu.getEvent(&a, &g, &temp);
   
-  //Print sensor vals to console so we can use them with plotter  
-  Serial.printf(
-    "RSS:%d, "
-    "Acceleration.x:%f, Acceleration.y:%f, Acceleration.z:%f, "
-    "Rotation.x:%f, Rotation.y:%f, Rotation.z:%f, "
-    "Temperature(C):%f\n",
-    rss,
-    a.acceleration.x, a.acceleration.y, a.acceleration.z,
-    g.gyro.x, g.gyro.y, g.gyro.z,
-    temp.temperature
-  );
+  // //Print sensor vals to console so we can use them with plotter  
+  // Serial.printf(
+  //   "RSS:%d, "
+  //   "Acceleration.x:%f, Acceleration.y:%f, Acceleration.z:%f, "
+  //   "Rotation.x:%f, Rotation.y:%f, Rotation.z:%f, "
+  //   "Temperature(C):%f\n",
+  //   rss,
+  //   a.acceleration.x, a.acceleration.y, a.acceleration.z,
+  //   g.gyro.x, g.gyro.y, g.gyro.z,
+  //   temp.temperature
+  // );
+
+
+  wifiServer.Update();
+
 
   //Print sensor vals to the display
   display.backBuffer.fillScreen(display.kColorBlack);
