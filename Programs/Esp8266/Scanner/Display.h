@@ -1,3 +1,4 @@
+#pragma once
 
 #include <SPI.h>
 #include <Adafruit_SSD1331.h>

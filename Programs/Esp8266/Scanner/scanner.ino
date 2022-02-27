@@ -7,7 +7,7 @@
 
 using uint = unsigned int;
 
-const uint kBaudRate = 115200;
+constexpr uint kBaudRate = 115200;
 
 //Note: Required for ESP.getVCC()
 ADC_MODE(ADC_VCC);

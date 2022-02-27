@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ESP8266WiFi.h>
 
 //const char* const kSSID = "Shay";
@@ -5,8 +7,6 @@
 
 const char* const kSSID = "WiflyHub";
 const char* const kWifiPassword = "thewifly";
-
-
 
 const char* WiFiStatusString(wl_status_t status) {
   switch(status) {
