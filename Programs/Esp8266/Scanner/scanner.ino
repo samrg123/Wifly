@@ -9,11 +9,16 @@ using uint = unsigned int;
 
 constexpr uint kBaudRate = 115200;
 
+//constexpr const char* const kSSID = "Shay";
+//constexpr const char* const kWifiPassword = "Shay2012";
+
+constexpr const char* const kSSID = "WiflyHub";
+constexpr const char* const kWifiPassword = "thewifly";
+
 //Note: Required for ESP.getVCC()
 ADC_MODE(ADC_VCC);
 
 #define Warn(mst, fmt...) Serial.printf("WARN - " msg "\n", fmt...)
-
 
 const char* FlashModeString(FlashMode_t mode) {
   switch(mode) {
@@ -70,7 +75,7 @@ void setup() {
   imu.Init();
 
   display.printf("Connecting WIFI:\n'%s'\n\n", kSSID);
-  ConnectToWiFi(kSSID, kWifiPassword);
+  wifi.Connect(kSSID, kWifiPassword);
 
   display.println("Done!");
 }
