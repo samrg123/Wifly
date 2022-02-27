@@ -5,7 +5,7 @@
 class Wifi: public ESP8266WiFiClass {
 
   public:
-    
+
     static const char* WiFiStatusString(wl_status_t status) {
       switch(status) {
         case WL_IDLE_STATUS:      return "WL_IDLE_STATUS";
@@ -21,7 +21,7 @@ class Wifi: public ESP8266WiFiClass {
       }
     }
 
-    void PrintWiFiDetails() {
+    void PrintWiFiStatus() {
 
       Serial.printf(
         "WiFi Status: {\n"
@@ -31,19 +31,19 @@ class Wifi: public ESP8266WiFiClass {
         "\tChannel: %d\n"
         "\tRSSI: %d\n"
         "\tGateway: %s\n"
-        "\tSubnetMask: %s\n"    
+        "\tSubnetMask: %s\n"
         "\tIP: %s\n"
-        "\tDNS: %s\n"    
+        "\tDNS: %s\n"
         "}\n",
 
         macAddress().c_str(),
-        WiFiStatusString(status()),    
+        WiFiStatusString(status()),
         SSID().c_str(),
         channel(),
         RSSI(),
         gatewayIP().toString().c_str(),
         subnetMask().toString().c_str(),
-        localIP().toString().c_str(),    
+        localIP().toString().c_str(),
         dnsIP().toString().c_str()
       );
     }
@@ -60,17 +60,14 @@ class Wifi: public ESP8266WiFiClass {
             wifiStatus != WL_CONNECT_FAILED &&
             wifiStatus != WL_WRONG_PASSWORD) {
 
-        Serial.printf("\nFailed to connect. status = %s | Retrying\n", WiFiStatusString(wifiStatus));          
+        Serial.printf("\nFailed to connect. status = %s | Retrying\n", WiFiStatusString(wifiStatus));
         delay(500);
       }
-      
+
       Serial.write('\n');
 
-      PrintWiFiDetails();
+      PrintWiFiStatus();
     }
-
-
-    // void
 
 };
 

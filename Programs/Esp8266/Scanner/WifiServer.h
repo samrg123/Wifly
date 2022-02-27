@@ -108,7 +108,7 @@ class WifiServer: public WiFiServer {
                     }
                 
                 } else if(connection.client.connected()) {
-                    
+
                     ++connectedClientCount;
                 }
 
@@ -141,8 +141,6 @@ class WifiServer: public WiFiServer {
                 //read in the buffer
                 size_t readBytes = connection.client.read(&connection.buffer[oldBufferSize], availableBytes);
                 connection.buffer.resize(oldBufferSize + readBytes);
-
-                Serial.printf("Read %d/%d bytes\n", readBytes, availableBytes);
 
                 //invoke onRead callback
                 if(readBytes && connection.onReadCallback) connection.onReadCallback(connection, readBytes);               

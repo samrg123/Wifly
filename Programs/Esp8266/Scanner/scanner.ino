@@ -141,7 +141,7 @@ void loop() {
   unsigned long deltaUs = loopTimer.LapUs();
 
   //capture RSS
-  int rss = WiFi.RSSI();
+  int rss = wifi.RSSI();
   
   //capture IMU data
   sensors_event_t a, g, temp;
