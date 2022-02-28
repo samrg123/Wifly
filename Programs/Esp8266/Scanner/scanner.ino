@@ -1,6 +1,5 @@
 
 #include "util.h"
-
 #include "Wifi.h"
 #include "WifiServer.h"
 #include "Display.h"
@@ -16,11 +15,6 @@ constexpr const char* const kWifiPassword = "Shay2012";
 // constexpr const char* const kWifiPassword = "thewifly";
 
 constexpr uint16 kServerPort = 1234;
-
-
-// #include <unordered_map>
-// using Command = void(*)(Connection& connection, const char* command, uint8 numArgs, const char** args);
-// using CommandMap = unordered_map<const char*, Command>; 
 
 //Note: Required for ESP.getVCC()
 ADC_MODE(ADC_VCC);
@@ -92,7 +86,7 @@ void setup() {
                  wifi.localIP().toString().c_str(), 
                  kServerPort);
   
-  wifiServer.Init(kServerPort, [](WifiServer::Connection& connection){
+  wifiServer.Init(kServerPort, [](WifiServer::Connection& connection) {
 
     connection.client.printf("Hello Client: %s:%d | Connected to %s:%d\n", 
                              connection.client.remoteIP().toString().c_str(), 
@@ -101,7 +95,7 @@ void setup() {
                              connection.client.localPort()
                              );
 
-    connection.onReadCallback = [](WifiServer::Connection& connection, size_t numBytes) {
+    connection.onRead.Append([](WifiServer::Connection& connection, size_t numBytes) {
 
       Serial.printf(
         "Client %s:%d says (%d): '%.*s'\n", 
@@ -121,7 +115,7 @@ void setup() {
       );
 
       connection.buffer.clear();
-    };
+    });
 
   });
 

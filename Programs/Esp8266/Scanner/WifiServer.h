@@ -1,6 +1,7 @@
 #pragma once
 
 #include "util.h"
+#include "ChainedCallback.h"
 
 #include <WiFiServer.h>
 #include <vector>
@@ -13,17 +14,16 @@ class WifiServer: public WiFiServer {
         static inline constexpr uint8 kMaxConnections = 5; //number of connections managed by server
 
         struct Connection {
-     
-            using OnReadCallback = void(*)(Connection& connection, size_t bytesRead);
 
+            using OnReadCallback = void(*)(Connection& connection, size_t bytesRead);
+    
             WiFiClient client;
+            ChainedCallback<OnReadCallback> onRead;  
             std::vector<uint8> buffer;
-        
-            OnReadCallback onReadCallback = nullptr;
         };
 
         using OnConnectCallback = void(*)(Connection& connection);
-        OnConnectCallback onConnectCallback = nullptr; 
+        ChainedCallback<OnConnectCallback> onConnect; 
 
     protected:
         
@@ -78,9 +78,9 @@ class WifiServer: public WiFiServer {
             );
         }
 
-        void Init(uint16 port, OnConnectCallback onConnectCallback_ = nullptr) {
+        void Init(uint16 port, OnConnectCallback onConnectCallback = nullptr) {
 
-            onConnectCallback = onConnectCallback_;
+            onConnect.Append(onConnectCallback);
 
             begin(port, kMaxBacklog);
 
@@ -101,10 +101,10 @@ class WifiServer: public WiFiServer {
                     //Invoke onConnect callback
                     // Note: we don't call client.connected just in case connection is still in the 
                     //       initial stages where connected() would return false. Instead we call
-                    //       onConnectCallback as soon as connection is initiated
+                    //       onConnect as soon as connection is initiated
                     if(connection.client.status() != CLOSED) {
                         ++connectedClientCount;
-                        if(onConnectCallback) onConnectCallback(connection);
+                        onConnect(connection);
                     }
                 
                 } else if(connection.client.connected()) {
@@ -143,12 +143,9 @@ class WifiServer: public WiFiServer {
                 connection.buffer.resize(oldBufferSize + readBytes);
 
                 //invoke onRead callback
-                if(readBytes && connection.onReadCallback) connection.onReadCallback(connection, readBytes);               
-            
+                if(readBytes) connection.onRead(connection, readBytes);
             }
-        
         }
-
 };
 
 WifiServer wifiServer;
