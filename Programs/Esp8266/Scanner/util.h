@@ -14,3 +14,7 @@ using uint64 = uint64_t;
 // TODO: Move this into more extensive logging header
 #include <SoftwareSerial.h>
 #define Warn(msg, fmt...) Serial.printf("WARN - " msg "\n", fmt)
+
+
+template<typename T, size_t kN>
+inline constexpr size_t ArrayCount(const T (&)[kN]) { return kN; }
