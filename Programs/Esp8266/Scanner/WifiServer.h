@@ -15,14 +15,22 @@ class WifiServer: public WiFiServer {
 
         struct Connection {
 
-            using OnReadCallback = void(*)(Connection& connection, size_t bytesRead);
+            struct OnReadArgs;
+            using OnReadCallback = void(*)(OnReadArgs& args);
     
             WiFiClient client;
             ChainedCallback<OnReadCallback> onRead;  
             std::vector<uint8> buffer;
         };
 
-        using OnConnectCallback = void(*)(Connection& connection);
+        struct Connection::OnReadArgs {
+            WifiServer& server;
+            Connection& connection;
+            size_t bytesRead;
+        };
+
+
+        using OnConnectCallback = void(*)(WifiServer& server, Connection& connection);
         ChainedCallback<OnConnectCallback> onConnect; 
 
     protected:
@@ -94,9 +102,10 @@ class WifiServer: public WiFiServer {
 
                 if(!connection.client) {
                 
-                    //Try to get new client
-                    connection.client = available();
-                    connection.buffer.clear();
+                    //Try to establish a new connection
+                    connection = Connection {
+                        .client = available()
+                    };
                     
                     //Invoke onConnect callback
                     // Note: we don't call client.connected just in case connection is still in the 
@@ -104,7 +113,7 @@ class WifiServer: public WiFiServer {
                     //       onConnect as soon as connection is initiated
                     if(connection.client.status() != CLOSED) {
                         ++connectedClientCount;
-                        onConnect(connection);
+                        onConnect(*this, connection);
                     }
                 
                 } else if(connection.client.connected()) {
@@ -139,13 +148,20 @@ class WifiServer: public WiFiServer {
                 connection.buffer.resize(newBufferBytes);
                 
                 //read in the buffer
-                size_t readBytes = connection.client.read(&connection.buffer[oldBufferSize], availableBytes);
-                connection.buffer.resize(oldBufferSize + readBytes);
+                size_t bytesRead = connection.client.read(&connection.buffer[oldBufferSize], availableBytes);
+                connection.buffer.resize(oldBufferSize + bytesRead);
 
                 //invoke onRead callback
-                if(readBytes) connection.onRead(connection, readBytes);
+                if(bytesRead) {
+
+                    Connection::OnReadArgs args = {
+                        .server = *this,
+                        .connection = connection,
+                        .bytesRead = bytesRead
+                    };
+
+                    connection.onRead(args);
+                }
             }
         }
 };
-
-WifiServer wifiServer;

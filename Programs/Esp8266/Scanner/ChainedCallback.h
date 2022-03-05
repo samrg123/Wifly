@@ -1,6 +1,6 @@
 #pragma once
 
-#include <list>
+#include <vector>
 
 template<typename Callback>
 struct ChainedCallback;
@@ -9,7 +9,7 @@ template<typename... ArgsT>
 struct ChainedCallback<void(*)(ArgsT...)> {
 
     using Callback = void(*)(ArgsT...);
-    std::list<Callback> callbacks;
+    std::vector<Callback> callbacks;
 
     inline void Append(Callback callback) {
         callbacks.push_back(callback);

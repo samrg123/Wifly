@@ -1,10 +1,12 @@
 
 #include "util.h"
 #include "Wifi.h"
-#include "WifiServer.h"
 #include "Display.h"
 #include "Imu.h"
 #include "Timer.h"
+#include "WifiCommandServer.h"
+
+using namespace std;
 
 constexpr uint kBaudRate = 115200;
 
@@ -15,6 +17,69 @@ constexpr const char* const kWifiPassword = "Shay2012";
 // constexpr const char* const kWifiPassword = "thewifly";
 
 constexpr uint16 kServerPort = 1234;
+
+struct WiflyCommand {
+
+  struct Arg {
+    enum Type { TYPE_REQUIRED, TYPE_OPTIONAL };
+
+    const char* name;
+    Type type = TYPE_REQUIRED;
+  };
+
+  struct Args {
+    const Arg* args;
+    size_t numArgs;
+
+    constexpr Args(): args(nullptr), numArgs(0) {}
+
+    template<size_t kN>
+    constexpr Args(const Arg (&args_)[kN]): args(args_), numArgs(kN) {}
+  };
+
+  const char* name;
+  const char* description = nullptr;
+  const char* detailedHelp = nullptr;
+
+  Args args;
+  
+  WifiCommandServer::CommandCallback callback;
+};
+
+template<size_t kN>
+struct WiflyCommandMap {
+
+  pair<const char*, WifiCommandServer::CommandCallback> values[kN];
+
+  constexpr WiflyCommandMap(const WiflyCommand (&commands)[kN]): values{} {
+    for(int i = 0; i < kN; ++i) {
+      values[i].first = commands[i].name;
+      values[i].second = commands[i].callback;
+    }
+  }
+};
+
+struct WiflyCommands {
+
+  static inline constexpr WiflyCommand kCommands[] = {
+
+    WiflyCommand {
+
+      .name = "hello",
+      .description = "Says Hello to the client",
+      .callback = [](WifiCommandServer::Command command) { 
+        
+        WifiServer::Connection& connection = command.connection;
+        connection.client.printf("Hello %s:%d\n", connection.client.remoteIP().toString().c_str(), connection.client.remotePort()); 
+      },
+    }
+  };
+
+  static inline constexpr auto kCommandMap = WiflyCommandMap(kCommands);
+};
+
+WifiCommandServer wifiCommandServer(WiflyCommands::kCommandMap.values, WiflyCommands::kCommandMap.values + ArrayCount(WiflyCommands::kCommandMap.values));
+
 
 //Note: Required for ESP.getVCC()
 ADC_MODE(ADC_VCC);
@@ -86,35 +151,26 @@ void setup() {
                  wifi.localIP().toString().c_str(), 
                  kServerPort);
   
-  wifiServer.Init(kServerPort, [](WifiServer::Connection& connection) {
+  wifiCommandServer.Init(kServerPort, [](WifiServer& server, WifiServer::Connection& connection) {
 
-    connection.client.printf("Hello Client: %s:%d | Connected to %s:%d\n", 
-                             connection.client.remoteIP().toString().c_str(), 
-                             connection.client.remotePort(),
-                             connection.client.localIP().toString().c_str(), 
-                             connection.client.localPort()
-                             );
+    Serial.printf("Connected Client: %s:%d\n", 
+                  connection.client.remoteIP().toString().c_str(), 
+                  connection.client.remotePort());
 
-    connection.onRead.Append([](WifiServer::Connection& connection, size_t numBytes) {
+    connection.onRead.Append([](WifiServer::Connection::OnReadArgs& args) {
 
+      WifiServer::Connection& connection = args.connection;
+      size_t newBytes = args.bytesRead;
+      uint8* newData = connection.buffer.data() + args.bytesRead;
+      
       Serial.printf(
         "Client %s:%d says (%d): '%.*s'\n", 
         connection.client.remoteIP().toString().c_str(), 
         connection.client.remotePort(),                              
-        numBytes,
-        numBytes, &connection.buffer.front()
-      );
-      Serial.flush();
-
-      connection.client.printf(
-        "Client %s:%d says (%d): '%.*s'\n", 
-        connection.client.remoteIP().toString().c_str(), 
-        connection.client.remotePort(),                              
-        numBytes,
-        numBytes, &connection.buffer.front()
+        newBytes,
+        newBytes, newData
       );
 
-      connection.buffer.clear();
     });
 
   });
@@ -131,7 +187,7 @@ void loop() {
   //capture Vcc
   uint16_t vccMv = ESP.getVcc();
 
-  //capture ellapsed time
+  //capture elapsed time
   unsigned long deltaUs = loopTimer.LapUs();
 
   //capture RSS
@@ -154,7 +210,7 @@ void loop() {
   // );
 
 
-  wifiServer.Update();
+  wifiCommandServer.Update();
 
 
   //Print sensor vals to the display
