@@ -4,6 +4,8 @@
 #include "ChainedCallback.h"
 
 #include <WiFiServer.h>
+#include <WiFiClient.h>
+
 #include <vector>
 
 class WifiServer: public WiFiServer {

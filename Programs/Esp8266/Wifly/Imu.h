@@ -75,5 +75,3 @@ class Imu: public Adafruit_MPU6050 {
     }
 
 };
-
-Imu imu;

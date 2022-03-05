@@ -77,5 +77,3 @@ class Display: public Adafruit_SSD1331 {
     }
     
 };
-
-static Display display;

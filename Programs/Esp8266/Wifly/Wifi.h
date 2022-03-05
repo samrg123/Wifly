@@ -70,5 +70,3 @@ class Wifi: public ESP8266WiFiClass {
     }
 
 };
-
-Wifi wifi;
