@@ -2,7 +2,7 @@
 
 #include "util.h"
 #include "Timer.h"
-#include "WiflyCommands.h"
+#include "WiflyCommandServer.h"
 
 #include "Esp.h"
 #include "Imu.h"
@@ -45,8 +45,7 @@ class Wifly {
         Wifi wifi;
         Display display;
 
-        WifiCommandServer wifiCommandServer = WifiCommandServer(WiflyCommands::kCommandMap.values, WiflyCommands::kCommandMap.values + ArrayCount(WiflyCommands::kCommandMap.values));
-
+        WiflyCommandServer commandServer;
         SensorData currentSensorData = {};
 
     public:
@@ -177,7 +176,7 @@ class Wifly {
                 kServerPort
             );
             
-            wifiCommandServer.Init(kServerPort, [](WifiServer& server, WifiServer::Connection& connection) {
+            commandServer.Init(kServerPort, [](WifiServer& server, WifiServer::Connection& connection) {
                 
                 Serial.printf("Connected Client: %s:%d\n", 
                             connection.client.remoteIP().toString().c_str(), 
@@ -209,7 +208,7 @@ class Wifly {
 
         void Update() {
 
-            wifiCommandServer.Update();
+            commandServer.Update();
 
             SensorData sensorData = ReadSensors();
 
