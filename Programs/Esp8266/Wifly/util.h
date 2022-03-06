@@ -13,6 +13,7 @@ using uint64 = uint64_t;
 
 // TODO: Move this into more extensive logging header
 #include <SoftwareSerial.h>
+#define Log(msg, fmt...) Serial.printf("MSG - " msg "\n", fmt)
 #define Warn(msg, fmt...) Serial.printf("WARN - " msg "\n", fmt)
 
 
