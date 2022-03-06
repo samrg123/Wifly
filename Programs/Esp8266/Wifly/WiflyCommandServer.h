@@ -46,7 +46,7 @@ struct WiflyCommandMap {
 
 class WiflyCommandServer: public WifiCommandServer {
     public:
-    
+
         static inline constexpr WiflyCommand kCommands[] = {
 
             WiflyCommand {
@@ -65,7 +65,21 @@ class WiflyCommandServer: public WifiCommandServer {
 
         WiflyCommandServer(): 
             WifiCommandServer(kCommandMap.values, 
-                              kCommandMap.values + ArrayCount(kCommandMap.values)) {}
+                              kCommandMap.values + ArrayCount(kCommandMap.values)) {
+
+            onConnect.Append([](WifiServer& server, Connection& connection) {
+            
+                Log("Connected Client: %s:%d\n", 
+                    connection.client.remoteIP().toString().c_str(), connection.client.remotePort());
+                
+                connection.client.printf(
+                    "Greetings %s:%d | Connected to: %s:%d",
+                    connection.client.remoteIP().toString().c_str(), connection.client.remotePort(),
+                    connection.client.localIP().toString().c_str(), connection.client.localPort()
+                );
+            });
+
+        }
 
 };
 

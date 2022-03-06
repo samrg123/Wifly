@@ -176,28 +176,7 @@ class Wifly {
                 kServerPort
             );
             
-            commandServer.Init(kServerPort, [](WifiServer& server, WifiServer::Connection& connection) {
-                
-                Serial.printf("Connected Client: %s:%d\n", 
-                            connection.client.remoteIP().toString().c_str(), 
-                            connection.client.remotePort());
-
-                connection.onRead.Append([](WifiServer::Connection::OnReadArgs& args) {
-
-                    WifiServer::Connection& connection = args.connection;
-                    size_t newBytes = args.bytesRead;
-                    uint8* newData = connection.buffer.data() + args.bytesRead;
-                    
-                    Serial.printf(
-                        "Client %s:%d says (%d): '%.*s'\n", 
-                        connection.client.remoteIP().toString().c_str(), 
-                        connection.client.remotePort(),                              
-                        newBytes,
-                        newBytes, newData
-                    );
-                });
-
-            });
+            commandServer.Init(kServerPort);
 
             // Wait 10s so port number is available on screen
             delay(10000);
