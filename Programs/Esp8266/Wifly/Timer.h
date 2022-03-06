@@ -1,19 +1,19 @@
 #pragma once
 
+#include "util.h"
+
 class Timer {
   private:
 
-    unsigned long timestampUs;
+    uint64 timestampUs;
 
   public:
 
-    inline Timer(bool start = true) {
-      if(start) timestampUs = micros();
-    }
+    inline constexpr Timer(uint64 timestampUs = 0): timestampUs(timestampUs) {}
 
-    inline unsigned long LapUs() {
-      unsigned long currentUs = micros();
-      unsigned long deltaUs = currentUs - timestampUs;
+    inline uint64 LapUs() {
+      uint64 currentUs = micros64();
+      uint64 deltaUs = currentUs - timestampUs;
 
       timestampUs = currentUs;
       
@@ -21,12 +21,12 @@ class Timer {
     }
 
     inline float LapMs() {
-      unsigned long deltaUs = LapUs();
+      uint64 deltaUs = LapUs();
       return deltaUs * .001f;
     }
 
     inline float LapS() {
-      unsigned long deltaUs = LapUs();
+      uint64 deltaUs = LapUs();
       return deltaUs * .000001f;
     }    
 

@@ -4,7 +4,8 @@ import socket
 from threading import Thread, Lock
 from time import sleep
 
-kHost = "192.168.0.162"
+# kHost = "192.168.0.162"
+kHost = "192.168.43.140"
 kPort = 1234
 
 stdOutLock = Lock()

@@ -23,7 +23,6 @@ struct ChainedCallback<void(*)(ArgsT...)> {
         callbacks.clear();
     }
 
-
     inline void operator()(ArgsT... args) {
     
         for(Callback callback : callbacks) {
