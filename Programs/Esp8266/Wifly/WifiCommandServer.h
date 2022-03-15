@@ -80,7 +80,7 @@ class WifiCommandServer: public WifiServer {
 
         static void ProcessCommand(Connection::OnReadArgs& args) {
 
-            WifiCommandServer instance = reinterpret_cast<WifiCommandServer&>(args.server);
+            WifiCommandServer& instance = static_cast<WifiCommandServer&>(args.server);
 
             Connection& connection = args.connection;
             char* buffer = reinterpret_cast<char*>(connection.buffer.data());

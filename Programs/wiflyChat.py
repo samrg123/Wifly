@@ -12,9 +12,9 @@ stdOutLock = Lock()
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-def SafePrint(str):
+def SafePrint(string):
     stdOutLock.acquire()
-    print(str)
+    print(string)
     stdOutLock.release()
 
 def RecvData():
@@ -25,7 +25,15 @@ def RecvData():
             SafePrint("Disconnected")
             break
 
-        SafePrint("Server Says: " + response.decode('utf-8').strip())            
+        prefix = "<- "
+        
+        try:
+            responseStr = response.decode('ascii').strip()
+        except UnicodeDecodeError:
+            responseStr = f"Failed to ascii decode: '{response}'"
+
+        responseStr = responseStr.replace("\n", "\n" + " "*len(prefix))
+        SafePrint(prefix + responseStr)            
 
 def Shutdown(returnCode=0):
     SafePrint("Shuting Down...")
@@ -56,5 +64,5 @@ while True:
     if command == "exit":
         Shutdown()
     
-    SafePrint(f"Sending Command: '{command}'")
+    SafePrint(f"-> '{command}'")
     sock.sendall((command+"\n").encode())

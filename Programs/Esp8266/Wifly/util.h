@@ -19,3 +19,14 @@ using uint64 = uint64_t;
 
 template<typename T, size_t kN>
 inline constexpr size_t ArrayCount(const T (&)[kN]) { return kN; }
+
+
+template<typename T, typename TBytes>
+inline constexpr const void* ByteOffset(const T* ptr, TBytes bytes) {
+    return reinterpret_cast<const char*>(ptr) + bytes;
+}
+
+template<typename T, typename TBytes>
+inline constexpr void* ByteOffset(T* ptr, TBytes bytes) {
+    return reinterpret_cast<char*>(ptr) + bytes;
+}

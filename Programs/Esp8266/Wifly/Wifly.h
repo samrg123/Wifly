@@ -2,7 +2,7 @@
 
 #include "util.h"
 #include "Timer.h"
-#include "WiflyCommandServer.h"
+#include "ExtendedWifiCommandServer.h"
 
 #include "Esp.h"
 #include "Imu.h"
@@ -36,6 +36,51 @@ class Wifly {
             
             uint16 vccMv;
             int8 rssi;
+
+            template<typename ValueT>
+            static inline String ValueString(const void* valuePtr_) {
+
+                if(!valuePtr_) return String("NULL");
+
+                const ValueT* valuePtr = reinterpret_cast<const ValueT*>(valuePtr_);
+
+                if constexpr(std::is_same<ValueT, sensors_vec_t>::value) {
+                    
+                    return String("{ ") + valuePtr->x + ", " + valuePtr->y + ", " + valuePtr->z + " }";
+                    
+                } else {
+
+                    return String(*valuePtr);
+                }
+            }
+            
+            String SensorValueString(String sensorName) const {
+
+                struct SensorNameLutEntry {
+                    const char* name;
+                    size_t valueByteOffset;
+                    String (*valueString)(const void* sensorValue);
+                };
+
+                static constexpr SensorNameLutEntry kSensorNameLut[] = {
+                    {"time",  offsetof(SensorData, timestampUs),         ValueString<decltype(timestampUs)>},
+                    {"accel", offsetof(SensorData, linearAcceleration),  ValueString<decltype(linearAcceleration)>},
+                    {"gyro",  offsetof(SensorData, angularAcceleration), ValueString<decltype(angularAcceleration)>},
+                    {"temp",  offsetof(SensorData, temperature),         ValueString<decltype(temperature)>},
+                    {"rssi",  offsetof(SensorData, rssi),                ValueString<decltype(rssi)>},
+                    {"vcc",   offsetof(SensorData, vccMv),               ValueString<decltype(vccMv)>}
+                };
+
+                for(const SensorNameLutEntry& lutEntry : kSensorNameLut) {
+                    
+                    if(sensorName == lutEntry.name) {
+                        const void* sensorValuePtr = ByteOffset(this, lutEntry.valueByteOffset);
+                        return lutEntry.valueString(sensorValuePtr);
+                    }
+                }
+
+                return "NULL";
+            }
         };
 
     protected:
@@ -44,11 +89,88 @@ class Wifly {
         Imu imu;
         Wifi wifi;
         Display display;
-
-        WiflyCommandServer commandServer;
         SensorData currentSensorData = {};
 
+        struct WiflyCommandServer: public ExtendedWifiCommandServer {
+            Wifly& wifly;
+
+            static inline constexpr WiflyCommandServer& Server(const Command& command) {
+                return static_cast<WiflyCommandServer&>(command.server);
+            }
+
+            static inline constexpr ExtendedCommand kExtendedCommands[] = {
+         
+                ExtendedCommand {
+                    
+                    .name = "hello",
+                    .description = "Says Hello to the client",
+                    .callback = [](Command command) { 
+
+                        Connection& connection = command.connection;
+                        connection.client.printf("Hello %s:%d\n", connection.client.remoteIP().toString().c_str(), connection.client.remotePort()); 
+                    }
+                },
+
+                // TODO: Add help Command and stream 'type' 'on/off' command 
+                // TODO: add Wifi::OnDisconnect(server& connection&) callback. Needed to free resources when streaming to wifi client
+
+                ExtendedCommand {
+                    .name = "read",
+                    .description = "Returns the last read value of each sensor specified in the arguments.",
+                    .detailedHelp = "Supported sensors: {\n"
+                                    "\ttime  - Returns the timestamp of the last read sensor value in microseconds.\n"
+                                    "\taccel - Returns the linear acceleration in g's.\n"
+                                    "\tgyro  - Returns the angular acceleration in r/s^2.\n"
+                                    "\ttemp  - Returns the temperature of the IMU in degrees C.\n"
+                                    "\trssi  - Returns the RSSI value of the Wifi module.\n"
+                                    "\tvcc   - Returns the VCC voltage of the ESP8266 in mV.\n"
+                                    "}",
+
+                    .args = ExtendedCommand::Args((ExtendedCommand::Arg[]){
+                        { .name = "SensorName..." }
+                    }),
+
+                    .callback = [](Command command) {          
+                    
+                        WiflyCommandServer& server = Server(command);
+                        Wifly& wifly = server.wifly;
+
+                        String result;
+                        for(int i = 0; i < command.numArgs; ++i) {
+                            
+                            String sensorName = command.args[i];
+                            result+= sensorName + ": " + wifly.currentSensorData.SensorValueString(sensorName);
+                            result+= '\n';
+                        }
+                        
+                        command.connection.client.print(result);
+                    }
+                },
+            };        
+
+            WiflyCommandServer(Wifly& wifly)
+                : ExtendedWifiCommandServer(ExtendedCommandMap(kExtendedCommands)), 
+                  wifly(wifly) {
+
+                onConnect.Append([](WifiServer& server, Connection& connection) {
+                
+                    Log("Connected Client: %s:%d\n", 
+                        connection.client.remoteIP().toString().c_str(), connection.client.remotePort());
+                    
+                    connection.client.printf(
+                        "Greetings %s:%d | Connected to: %s:%d",
+                        connection.client.remoteIP().toString().c_str(), connection.client.remotePort(),
+                        connection.client.localIP().toString().c_str(), connection.client.localPort()
+                    );
+                });
+            }
+        };
+
+        WiflyCommandServer commandServer;
+
     public:
+
+        Wifly(): commandServer(*this) {}
 
         using DataStreamCallback = void(*)(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs);
         ChainedCallback<DataStreamCallback> updateDataStreams;
@@ -178,8 +300,8 @@ class Wifly {
             
             commandServer.Init(kServerPort);
 
-            // Wait 10s so port number is available on screen
-            delay(10000);
+            // Wait 5s so port number is available on screen
+            delay(5000);
 
             // Note: Serial data stream is off by default
             updateDataStreams.Append(UpdateDisplayDataStream);
