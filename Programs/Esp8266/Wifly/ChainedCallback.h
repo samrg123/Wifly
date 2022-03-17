@@ -22,14 +22,31 @@ struct ChainedCallback<void(*)(ArgsT...)> {
         callbacks.push_back(callback);
     }
 
+    inline auto Find(Callback callback) {
+        return std::find(callbacks.begin(), callbacks.end(), callback);
+    }
+
+    inline auto Find(Callback callback) const {
+        return std::find(callbacks.begin(), callbacks.end(), callback);
+    }
+
+    inline bool Contains(Callback callback) const {
+        return Find(callback) != callbacks.end();
+    }
+
     inline bool Remove(Callback callback) {
 
-        auto it = std::find(callbacks.begin(), callbacks.end(), callback);
+        auto it = Find(callback);
         if(it == callbacks.end()) return false;
 
         callbacks.erase(it);
         return true;
     }
+
+    template<typename IteratorT>
+    inline void Remove(IteratorT iterator) {
+        callbacks.erase(iterator);
+    }    
 
     //Replaces the oldcallback with the specified new callback. If the oldcallback isn't in the 
     //callbacks array the newCallback is appended to the back and the function returns false. 

@@ -150,6 +150,23 @@ class Wifly {
                 display.Draw();
             }
 
+            struct CallbackLutEntry {
+                const char* name;
+                const SensorStreamCallback callback;
+            };
+
+            static inline constexpr CallbackLutEntry kCallbackLut[] = {
+                {"display", UpdateDisplay},
+                {"serial",  UpdateSerial},
+            };
+
+            SensorStreamCallback GetCallback(const char* name) {
+                for(const CallbackLutEntry& entry : kCallbackLut) {
+                    if(!strcmp(name, entry.name)) return entry.callback;
+                }
+                return nullptr;
+            }
+
             SensorStream(): ChainedCallback({UpdateDisplay}) {}
         };
         SensorStream sensorStream;
@@ -178,7 +195,8 @@ class Wifly {
                 ExtendedCommand {
                     
                     .name = "hello",
-                    .summary = "Says Hello to the client",
+                    .summary = "Says hello to the client.",
+                    .detailedHelp = "Sends the client 'Hello ip:port' where 'ip:port' corresponds to the client's ip and port numbers.",
                     .callback = [](Command command) { 
 
                         Connection& connection = command.connection;
@@ -230,9 +248,68 @@ class Wifly {
                 },
 
                 ExtendedCommand {
+                    .name = "stream",
+                    .summary = "Starts or stops the provided sensor stream.",
+                    .detailedHelp = "Supported Streams: {\n"
+                                    "\tdisplay - Controls updates to the screen\n"
+                                    "\tserial  - Controls updates to the serial port\n"
+                                    "}",
+                    
+                    .args = (ExtendedCommand::Arg[]) {
+                        { .name = "stream" },
+                        { .name = "on|off"}
+                    },
+                    
+                    .callback = [](Command command) {
+                        
+                        // TODO: add arg parser
+                        
+                        Client& client = command.connection.client; 
+                        if(command.numArgs != 2) {
+                            client.print("Invalid args");
+                            return;
+                        }
+
+                        Wifly& wifly = Server(command).wifly;
+                        
+                        const char* streamName = command.args[0];
+                        SensorStreamCallback callback = wifly.sensorStream.GetCallback(streamName);
+                        if(!callback) {
+                            client.printf("Invalid stream: '%s'", streamName);
+                            return;
+                        }
+
+                        enum State { OFF, ON, INVALID };
+
+                        const char* stateStr = command.args[1];
+                        State state = !strcmp(stateStr, "on") ? ON : !strcmp(stateStr, "off") ? OFF : INVALID;
+
+                        if(state == INVALID) {
+                            client.printf("Invalid state: '%s'", stateStr);
+                            return;
+                        }
+
+                        auto callbackIt = wifly.sensorStream.Find(callback);
+                        bool isStreamOn = callbackIt != wifly.sensorStream.callbacks.end();
+                        if(isStreamOn == state) {
+                            client.printf("Sensor stream is already %s", stateStr);
+                            return;
+                        }
+
+                        if(state == ON) {
+                            wifly.sensorStream.Append(callback);
+                        } else {
+                            wifly.sensorStream.Remove(callbackIt);
+                        }
+
+                        client.printf("Turned sensor stream '%s' %s", streamName, stateStr);
+                    }
+                },
+
+                ExtendedCommand {
                     .name = "woof",
-                    .summary = "A royal how do you do",
-                    .detailedHelp = "In loving memory of Shay 2008-2021",
+                    .summary = "A royal how do you do.",
+                    .detailedHelp = "In loving memory of Shay 2008-2021.",
                     .callback = [](Command command) {
                         
                         Wifly& wifly = Server(command).wifly;
