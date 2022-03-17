@@ -66,3 +66,4 @@ while True:
     
     SafePrint(f"-> '{command}'")
     sock.sendall((command+"\n").encode())
+    

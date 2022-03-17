@@ -16,17 +16,17 @@ class ExtendedWifiCommandServer: public WifiCommandServer {
             };
 
             struct Args {
-                const Arg* args;
+                const Arg* arg;
                 size_t numArgs;
 
-                constexpr Args(): args(nullptr), numArgs(0) {}
+                constexpr Args(): arg(nullptr), numArgs(0) {}
 
                 template<size_t kN>
-                constexpr Args(const Arg (&args_)[kN]): args(args_), numArgs(kN) {}
+                constexpr Args(const Arg (&args_)[kN]): arg(args_), numArgs(kN) {}
             };
 
             const char* name         = nullptr;
-            const char* description  = nullptr;
+            const char* summary      = nullptr;
             const char* detailedHelp = nullptr;
 
             Args args;

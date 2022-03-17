@@ -2,6 +2,7 @@
 
 #include "util.h"
 #include "Timer.h"
+#include "Banner.h"
 #include "ExtendedWifiCommandServer.h"
 
 #include "Esp.h"
@@ -13,9 +14,6 @@ class Wifly {
     public:
 
         static inline constexpr uint kBaudRate = 115200;
-
-        // static inline constexpr const char* const kSSID = "Shay";
-        // static inline constexpr const char* const kWifiPassword = "Shay2012";
 
         static inline constexpr const char* const kSSID = "WiflyHub";
         static inline constexpr const char* const kWifiPassword = "thewifly";
@@ -98,25 +96,45 @@ class Wifly {
                 return static_cast<WiflyCommandServer&>(command.server);
             }
 
-            static inline constexpr ExtendedCommand kExtendedCommands[] = {
-         
+            // Note: HelpCallback uses kExtendedCommands array for info so we forward declare it
+            // TODO: Forward declare all Callbacks and implement them in a cpp file. Will cleanup
+            //       header and allow us to print extended help when a command is specified with invalid args
+            static inline void HelpCallback(Command command);
+
+            // Note: For whatever reason Intelisense doesn't reliably evalute this expression as constexpr 
+            //       so we just define it as const when Intelisense is compiling project so we don't get false errors
+            // TODO: This leads to other issues such as constexpr auto a = kExtendedCommands no longer being valid in 
+            //       intelisense, figure out why intelisense is reporting this incorrectly and remove INTELISENSE_CHOOSE macro
+            // TODO: Add help Command and stream 'type' 'on/off' command 
+            // TODO: add Wifi::OnDisconnect(server& connection&) callback. Needed to free resources when streaming to wifi client   
+            static inline INTELISENSE_CHOOSE(const, constexpr) ExtendedCommand kExtendedCommands[] = {
+
                 ExtendedCommand {
                     
                     .name = "hello",
-                    .description = "Says Hello to the client",
+                    .summary = "Says Hello to the client",
                     .callback = [](Command command) { 
 
                         Connection& connection = command.connection;
                         connection.client.printf("Hello %s:%d\n", connection.client.remoteIP().toString().c_str(), connection.client.remotePort()); 
                     }
-                },
+                },   
 
-                // TODO: Add help Command and stream 'type' 'on/off' command 
-                // TODO: add Wifi::OnDisconnect(server& connection&) callback. Needed to free resources when streaming to wifi client
+                ExtendedCommand {
+                    
+                    .name = "help",
+                    .summary = "Prints the help menu. If arguments are provided detailed help is printed for each specified command.",                 
+
+                    .args = (ExtendedCommand::Arg[]) {
+                        { .name = "Command...", .type = ExtendedCommand::Arg::TYPE_OPTIONAL }
+                    },
+
+                    .callback = HelpCallback
+                },
 
                 ExtendedCommand {
                     .name = "read",
-                    .description = "Returns the last read value of each sensor specified in the arguments.",
+                    .summary = "Returns the last read value of each sensor specified in the arguments.",
                     .detailedHelp = "Supported sensors: {\n"
                                     "\ttime  - Returns the timestamp of the last read sensor value in microseconds.\n"
                                     "\taccel - Returns the linear acceleration in g's.\n"
@@ -126,21 +144,19 @@ class Wifly {
                                     "\tvcc   - Returns the VCC voltage of the ESP8266 in mV.\n"
                                     "}",
 
-                    .args = ExtendedCommand::Args((ExtendedCommand::Arg[]){
-                        { .name = "SensorName..." }
-                    }),
+                    .args = (ExtendedCommand::Arg[]) {
+                        { .name = "SensorName..." } //TODO: make this optional. If no args are provided we should retrurn all sensor values
+                    },
 
                     .callback = [](Command command) {          
                     
-                        WiflyCommandServer& server = Server(command);
-                        Wifly& wifly = server.wifly;
+                        const Wifly& wifly = Server(command).wifly;
 
                         String result;
                         for(int i = 0; i < command.numArgs; ++i) {
                             
                             String sensorName = command.args[i];
-                            result+= sensorName + ": " + wifly.currentSensorData.SensorValueString(sensorName);
-                            result+= '\n';
+                            result = result + sensorName + ": " + wifly.currentSensorData.SensorValueString(sensorName) + '\n';
                         }
                         
                         command.connection.client.print(result);
@@ -317,5 +333,113 @@ class Wifly {
 
             currentSensorData = sensorData;
         }
-
 };
+
+void Wifly::WiflyCommandServer::HelpCallback(WiflyCommandServer::Command command) {
+
+    // TODO: pull these funtions out into a text formatter that will automatically
+    //       adjust indenting and wrap text to banner width
+
+    auto indentNewlines = [](const char* str) {
+        
+        // TODO: preallocate the size of result to at least fit str 
+        String result;
+        if(!str) return result;
+
+        for(char c; (c = *str); ++str) {
+            result+= c;
+            if(c == '\n') result+= '\t';
+        }
+        return result;
+    };
+
+    auto argsString = [](const ExtendedCommand& extendedCommand) {
+        
+        const ExtendedCommand::Args& args = extendedCommand.args;
+        
+        int numArgs = args.numArgs; 
+        if(!numArgs) return String("None"); 
+        
+        String result;
+        int i = 0;
+        while(true) {
+
+            const ExtendedCommand::Arg& arg = args.arg[i];
+
+            if(arg.type == arg.TYPE_OPTIONAL) {
+                result = result + '[' + arg.name + ']';
+            } else {
+                result = result + '<' + arg.name + '>';
+            }
+            
+            if(++i < numArgs) {
+                result+= ' ';
+            } else {
+                return result;
+            }
+        }
+    };
+
+    auto helpSummaryString = [&](const ExtendedCommand& extendedCommand) {
+
+        String result(extendedCommand.name);
+        
+        constexpr int kLeftColumnWidth = 8;
+        for(int i = result.length(); i < kLeftColumnWidth; ++i) {
+            result+= ' ';
+        }
+        
+        return result + ": " + extendedCommand.summary;
+    };
+
+    auto detailedHelpString = [&](const ExtendedCommand& extendedCommand) {
+        
+        String result;
+        result = result + extendedCommand.name + " {\n"
+                 "\tArgs:    " + argsString(extendedCommand) + "\n"
+                 "\tSummary: " + extendedCommand.summary + "\n"
+                 "\tDetails: " + (extendedCommand.detailedHelp ? indentNewlines(extendedCommand.detailedHelp) : String("None")) + "\n"
+                 "}";
+        
+        return result;
+    };
+
+    String result;
+    int numArgs = command.numArgs; 
+    if(numArgs) {
+    
+        // print extended Help
+        String helpString;
+        for(int i = 0; i < numArgs; ++i) {
+            const char* arg = command.args[i];
+            
+            // TODO: switch to binary search once we can enforce ordering on kExtendedCommands 
+            for(const ExtendedCommand& extendedCommand : kExtendedCommands) {
+                if(!strcmp(arg, extendedCommand.name)) {
+                    helpString = detailedHelpString(extendedCommand);
+                    break;
+                }
+            }
+            
+            if(helpString.isEmpty()) {
+                result = result + "\nInvalid Command: '" + arg + '\'';  
+            } else {
+                result = result + '\n' + helpString;
+                helpString.clear();                         
+            }
+        }
+
+    } else {
+
+        constexpr auto kBanner = Banner<90>(" Help Menu ", '-');
+        result = result + kBanner.buffer + '\n';
+
+        // print Help summary
+        for(const ExtendedCommand& extendedCommand : kExtendedCommands) {
+            result = result + helpSummaryString(extendedCommand) + '\n';
+        }
+    }
+
+    Connection& connection = command.connection;
+    connection.client.print(result); 
+}
