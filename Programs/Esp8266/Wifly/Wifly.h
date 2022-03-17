@@ -10,6 +10,8 @@
 #include "Wifi.h"
 #include "Display.h"
 
+#include "woof.h"
+
 class Wifly {
     public:
 
@@ -89,6 +91,70 @@ class Wifly {
         Display display;
         SensorData currentSensorData = {};
 
+        using SensorStreamCallback = void(*)(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs);
+        struct SensorStream: ChainedCallback<SensorStreamCallback> {
+
+            //Print sensor vals to console so we can use them with plotter  
+            static inline void UpdateSerial(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs) {
+                Serial.printf(
+                    "deltaUs:%llu, "
+                    "Acceleration.x:%f, Acceleration.y:%f, Acceleration.z:%f, "
+                    "Rotation.x:%f, Rotation.y:%f, Rotation.z:%f, "
+                    "Temperature(C):%f\n"
+                    "Vcc(mV):%d, "
+                    "RSS:%d ",
+
+                    deltaUs,
+                    sensorData.linearAcceleration.x, sensorData.linearAcceleration.y, sensorData.linearAcceleration.z,
+                    sensorData.angularAcceleration.x, sensorData.angularAcceleration.y, sensorData.angularAcceleration.z,
+                    sensorData.temperature,
+                    sensorData.vccMv,
+                    sensorData.rssi
+                );
+            }
+
+            //Print Sensor vals to screen
+            static inline void UpdateDisplay(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs) {
+                
+                Display& display = wifly.display;
+
+                display.backBuffer.fillScreen(display.kColorBlack);
+                display.backBuffer.setCursor(0,0);
+
+                display.backBuffer.setTextColor(display.kColorWhite);
+                display.backBuffer.printf("Vcc: %4.2f\n", .001f * sensorData.vccMv);
+
+                display.backBuffer.setTextColor(display.kColorRed);
+                display.backBuffer.printf("FPS: %5.2f\n", 1000000.f / deltaUs);
+
+                display.backBuffer.setTextColor(display.kColorCyan);
+                display.backBuffer.printf("RSSI: %d\n", sensorData.rssi);
+
+                display.backBuffer.setTextColor(display.kColorYellow);
+                display.backBuffer.printf(
+                    "G: % 04.2f % 04.2f \n"
+                    "      % 04.2f\n", 
+                    sensorData.angularAcceleration.x, sensorData.angularAcceleration.y, sensorData.angularAcceleration.z
+                );
+
+                display.backBuffer.setTextColor(display.kColorGreen);
+                display.backBuffer.printf(
+                    "A: % 04.2f % 04.2f \n"
+                    "      % 04.2f\n", 
+                    sensorData.linearAcceleration.x, sensorData.linearAcceleration.y, sensorData.linearAcceleration.z
+                );
+                
+                display.backBuffer.setTextColor(display.kColorMagenta);
+                display.backBuffer.printf("T: %5.2f\n", sensorData.temperature);
+
+                display.Draw();
+            }
+
+            SensorStream(): ChainedCallback({UpdateDisplay}) {}
+        };
+        SensorStream sensorStream;
+
+
         struct WiflyCommandServer: public ExtendedWifiCommandServer {
             Wifly& wifly;
 
@@ -162,6 +228,24 @@ class Wifly {
                         command.connection.client.print(result);
                     }
                 },
+
+                ExtendedCommand {
+                    .name = "woof",
+                    .summary = "A royal how do you do",
+                    .detailedHelp = "In loving memory of Shay 2008-2021",
+                    .callback = [](Command command) {
+                        
+                        Wifly& wifly = Server(command).wifly;
+                        wifly.sensorStream.Remove(SensorStream::UpdateDisplay);
+
+                        Display& display = wifly.display;
+
+                        display.backBuffer.drawRGBBitmap(0, 0, Woof::kBuffer, Woof::kWidth, Woof::kHeight);
+                        display.Draw();
+
+                        command.connection.client.print("The Queen says Woof");
+                    }
+                },
             };        
 
             WiflyCommandServer(Wifly& wifly)
@@ -187,68 +271,6 @@ class Wifly {
     public:
 
         Wifly(): commandServer(*this) {}
-
-        using DataStreamCallback = void(*)(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs);
-        ChainedCallback<DataStreamCallback> updateDataStreams;
-
-        //Print sensor vals to console so we can use them with plotter  
-        static inline void UpdateSerialDataStream(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs) {
-            Serial.printf(
-                "deltaUs:%llu, "
-                "Acceleration.x:%f, Acceleration.y:%f, Acceleration.z:%f, "
-                "Rotation.x:%f, Rotation.y:%f, Rotation.z:%f, "
-                "Temperature(C):%f\n"
-                "Vcc(mV):%d, "
-                "RSS:%d ",
-
-                deltaUs,
-                sensorData.linearAcceleration.x, sensorData.linearAcceleration.y, sensorData.linearAcceleration.z,
-                sensorData.angularAcceleration.x, sensorData.angularAcceleration.y, sensorData.angularAcceleration.z,
-                sensorData.temperature,
-                sensorData.vccMv,
-                sensorData.rssi
-            );
-        }
-
-        //Print Sensor vals to screen
-        static inline void UpdateDisplayDataStream(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs) {
-            
-            Display& display = wifly.display;
-           
-            display.backBuffer.fillScreen(display.kColorBlack);
-            display.backBuffer.setCursor(0,0);
-
-            display.backBuffer.setTextColor(display.kColorWhite);
-            display.backBuffer.printf("Vcc: %4.2f\n", .001f * sensorData.vccMv);
-
-            display.backBuffer.setTextColor(display.kColorRed);
-            display.backBuffer.printf("FPS: %5.2f\n", 1000000.f / deltaUs);
-
-            display.backBuffer.setTextColor(display.kColorCyan);
-            display.backBuffer.printf("RSSI: %d\n", sensorData.rssi);
-
-            display.backBuffer.setTextColor(display.kColorYellow);
-            display.backBuffer.printf(
-                "G: % 04.2f % 04.2f \n"
-                "      % 04.2f\n", 
-                sensorData.angularAcceleration.x, sensorData.angularAcceleration.y, sensorData.angularAcceleration.z
-            );
-
-            display.backBuffer.setTextColor(display.kColorGreen);
-            display.backBuffer.printf(
-                "A: % 04.2f % 04.2f \n"
-                "      % 04.2f\n", 
-                sensorData.linearAcceleration.x, sensorData.linearAcceleration.y, sensorData.linearAcceleration.z
-            );
-            
-            display.backBuffer.setTextColor(display.kColorMagenta);
-            display.backBuffer.printf("T: %5.2f\n", sensorData.temperature);
-
-            display.Draw();
-        }
-
-
-    public:
 
         inline SensorData ReadSensors() {
 
@@ -318,9 +340,6 @@ class Wifly {
 
             // Wait 5s so port number is available on screen
             delay(5000);
-
-            // Note: Serial data stream is off by default
-            updateDataStreams.Append(UpdateDisplayDataStream);
         }
 
         void Update() {
@@ -329,7 +348,7 @@ class Wifly {
 
             SensorData sensorData = ReadSensors();
 
-            updateDataStreams(*this, sensorData, sensorData.timestampUs - currentSensorData.timestampUs);
+            sensorStream(*this, sensorData, sensorData.timestampUs - currentSensorData.timestampUs);
 
             currentSensorData = sensorData;
         }
