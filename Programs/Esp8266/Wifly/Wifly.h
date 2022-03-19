@@ -12,6 +12,8 @@
 
 #include "woof.h"
 
+#include <StreamString.h>
+
 class Wifly {
     public:
 
@@ -44,9 +46,24 @@ class Wifly {
 
                 const ValueT* valuePtr = reinterpret_cast<const ValueT*>(valuePtr_);
 
-                if constexpr(std::is_same<ValueT, sensors_vec_t>::value) {
+                if constexpr(std::is_same<ValueT, float>::value) {
+
+                    String result;
                     
-                    return String("{ ") + valuePtr->x + ", " + valuePtr->y + ", " + valuePtr->z + " }";
+                    S2Stream stream(result);
+                    stream.printf("%.7g", *valuePtr);
+                    
+                    return result;
+
+                } else if constexpr(std::is_same<ValueT, sensors_vec_t>::value) {
+                    
+                    String result;
+                    
+                    S2Stream stream(result);
+                    stream.printf("{ %.7g, %.7g, %.7g }", 
+                                  valuePtr->x, valuePtr->y, valuePtr->z);
+                    
+                    return result;
                     
                 } else {
 
