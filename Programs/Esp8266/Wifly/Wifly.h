@@ -108,7 +108,7 @@ class Wifly {
         Display display;
         SensorData currentSensorData = {};
 
-        using SensorStreamCallback = void(*)(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs);
+        using SensorStreamCallback = void(*)(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs);                
         struct SensorStream: ChainedCallback<SensorStreamCallback> {
 
             //Print sensor vals to console so we can use them with plotter  
@@ -259,8 +259,8 @@ class Wifly {
                             String sensorName = command.args[i];
                             result = result + sensorName + ": " + wifly.currentSensorData.SensorValueString(sensorName) + '\n';
                         }
-                        
-                        command.connection.client.print(result);
+
+                        command.connection.client.println(result);
                     }
                 },
 
@@ -283,7 +283,7 @@ class Wifly {
                         
                         Client& client = command.connection.client; 
                         if(command.numArgs != 2) {
-                            client.print("Invalid args");
+                            client.println("Invalid args");
                             return;
                         }
 
@@ -292,7 +292,7 @@ class Wifly {
                         const char* streamName = command.args[0];
                         SensorStreamCallback callback = wifly.sensorStream.GetCallback(streamName);
                         if(!callback) {
-                            client.printf("Invalid stream: '%s'", streamName);
+                            client.printf("Invalid stream: '%s'\n", streamName);
                             return;
                         }
 
@@ -302,14 +302,14 @@ class Wifly {
                         State state = !strcmp(stateStr, "on") ? ON : !strcmp(stateStr, "off") ? OFF : INVALID;
 
                         if(state == INVALID) {
-                            client.printf("Invalid state: '%s'", stateStr);
+                            client.printf("Invalid state: '%s'\n", stateStr);
                             return;
                         }
 
                         auto callbackIt = wifly.sensorStream.Find(callback);
                         bool isStreamOn = callbackIt != wifly.sensorStream.callbacks.end();
                         if(isStreamOn == state) {
-                            client.printf("Sensor stream is already %s", stateStr);
+                            client.printf("Sensor stream is already %s\n", stateStr);
                             return;
                         }
 
@@ -319,7 +319,7 @@ class Wifly {
                             wifly.sensorStream.Remove(callbackIt);
                         }
 
-                        client.printf("Turned sensor stream '%s' %s", streamName, stateStr);
+                        client.printf("Turned sensor stream '%s' %s\n", streamName, stateStr);
                     }
                 },
 
@@ -337,7 +337,7 @@ class Wifly {
                         display.backBuffer.drawRGBBitmap(0, 0, Woof::kBuffer, Woof::kWidth, Woof::kHeight);
                         display.Draw();
 
-                        command.connection.client.print("The Queen says Woof");
+                        command.connection.client.println("The Queen says Woof");
                     }
                 },
             };        
@@ -348,14 +348,20 @@ class Wifly {
 
                 onConnect.Append([](WifiServer& server, Connection& connection) {
                 
-                    Log("Connected Client: %s:%d\n", 
-                        connection.client.remoteIP().toString().c_str(), connection.client.remotePort());
+                    Log("Connected Client: %s:%d | connectedClientCount: %d\n", 
+                        connection.client.remoteIP().toString().c_str(), connection.client.remotePort(),
+                        server.ConnectedClientCount());
                     
                     connection.client.printf(
-                        "Greetings %s:%d | Connected to: %s:%d",
+                        "Greetings %s:%d | Connected to: %s:%d\n",
                         connection.client.remoteIP().toString().c_str(), connection.client.remotePort(),
                         connection.client.localIP().toString().c_str(), connection.client.localPort()
                     );
+                });
+
+                onDisconnect.Append([](WifiServer& server, Connection& connection) {
+                    Log("Disconnected Client: %s:%d\n", 
+                        connection.client.remoteIP().toString().c_str(), connection.client.remotePort());
                 });
             }
         };
