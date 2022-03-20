@@ -32,8 +32,9 @@ class WifiServer: public WiFiServer {
         };
 
 
-        using OnConnectCallback = void(*)(WifiServer& server, Connection& connection);
-        ChainedCallback<OnConnectCallback> onConnect; 
+        using ConnectionCallback = void(*)(WifiServer& server, Connection& connection);
+        ChainedCallback<ConnectionCallback> onConnect; 
+        ChainedCallback<ConnectionCallback> onDisconnect; 
 
     protected:
         
@@ -88,9 +89,12 @@ class WifiServer: public WiFiServer {
             );
         }
 
-        void Init(uint16 port, OnConnectCallback onConnectCallback = nullptr) {
+        void Init(uint16 port, 
+                  ConnectionCallback onConnectCallback = nullptr,
+                  ConnectionCallback onDisconnectCallback = nullptr) {
 
-            onConnect.Append(onConnectCallback);
+            if(onConnectCallback) onConnect.Append(onConnectCallback);
+            if(onDisconnectCallback) onConnect.Append(onDisconnectCallback);
 
             begin(port, kMaxBacklog);
 
@@ -99,11 +103,22 @@ class WifiServer: public WiFiServer {
 
         void Update() {
             
-            connectedClientCount = 0; 
             for(Connection& connection : connections) {
 
                 if(!connection.client) {
-                
+            
+                    // Log("ClientStatus: %d | remoteIp: %d:%d | localIp: %d:%d",
+                    //     connection.client.status(),
+                    //     connection.client.remoteIP(), connection.client.remotePort(),                            
+                    //     connection.client.localIP(), connection.client.localPort()                            
+                    // );                      
+
+                    // TODO: THIS DOESN'T WORK!!! available always returns a connection 
+                    if(connection.client.remoteIP().isSet()) {
+                        --connectedClientCount;
+                        onDisconnect(*this, connection);
+                    }
+
                     //Try to establish a new connection
                     connection = Connection {
                         .client = available()
@@ -116,11 +131,12 @@ class WifiServer: public WiFiServer {
                     if(connection.client.status() != CLOSED) {
                         ++connectedClientCount;
                         onConnect(*this, connection);
-                    }
-                
-                } else if(connection.client.connected()) {
+                    
+                    } else {
 
-                    ++connectedClientCount;
+                        // No available client
+                        continue;
+                    } 
                 }
 
                 //check for data
