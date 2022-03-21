@@ -8,26 +8,26 @@ from system.RobotState import RobotState
 class myStruct:
     pass
 
-def motionFunction(state, sensor):
+def motionFunction(state, sensorValue):
 
     position = state.getPosition()
     theta = state.getOrientation()
 
-    linearVelocity = sensor.getLinearVelocity()
-    angularVelocity = sensor.getAngularVelocity()
+    linearVelocity = sensorValue.getLinearVelocity()
+    angularVelocity = sensorValue.getAngularVelocity()
 
     return RobotState(
         position = position + linearVelocity,
         orientation = theta + angularVelocity 
     )
 
-def GetNoise(v, w, velocityNoiseDensity, angularVelocityNoiseDensity):
-    return velocityNoiseDensity*np.linalg.norm(v) + \
-           angularVelocityNoiseDensity*w*w
+def GetNoise(linearVelocity, angularVelocity, velocityNoiseDensity, angularVelocityNoiseDensity):
+    return velocityNoiseDensity * np.linalg.norm(linearVelocity) + \
+           angularVelocityNoiseDensity * angularVelocity*angularVelocity
 
-def MotionNoiseFunction(sensor, alphas):
-    v = sensor.getLinearVelocity()
-    w = sensor.getAngularVelocity()
+def MotionNoiseFunction(sensorValue, alphas):
+    v = sensorValue.getLinearVelocity()
+    w = sensorValue.getAngularVelocity()
     
     return np.diag([
         GetNoise(v, w, alphas[0], alphas[1]),

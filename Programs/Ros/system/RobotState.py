@@ -59,7 +59,6 @@ class RobotState:
     def getPositionCovariance(self):
         return np.copy(self.P[0:2,0:2])
 
-
     def setOrientationCovariance(self, cov_in):
         self.P[3,3] = cov_in
 
@@ -72,11 +71,14 @@ class RobotState:
     def getCovariance(self):
         return np.copy(self.P)
 
-    def setState(self, X_in):
-        self.X = np.copy(X_in)
-        
-    def getState(self):
+    def getMeanVector(self):
         return np.copy(self.X)
+
+    def setMean(self, state):
+        self.X = np.copy(state.X)
+    
+    def setMeanVector(self, stateVector):
+        self.X = np.copy(stateVector)
 
 def main():
     rob_sys = RobotState()

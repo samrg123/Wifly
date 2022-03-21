@@ -100,7 +100,7 @@ class path_publisher:
 
         scale = np.sqrt(7.815)
 
-        mean = state.getState()
+        mean = state.getVector()
         mean_matrix = np.eye(3)
         R = np.array([[np.cos(mean[2]),-np.sin(mean[2])],[np.sin(mean[2]),np.cos(mean[2])]])
 

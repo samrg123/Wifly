@@ -1,3 +1,4 @@
 .vscode
 Programs/ESP8266/VSCODE_BUILD
 Programs/ESP8266/Wifly/build
+__pycache__/

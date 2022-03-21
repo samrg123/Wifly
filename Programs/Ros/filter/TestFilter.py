@@ -18,20 +18,20 @@ class TestFilter:
         self.state = RobotState()
 
         # init state
-        self.state.setState(init.mu)
+        self.state.setMeanVector(init.mu)
         self.state.setCovariance(init.Sigma)
 
     
-    def prediction(self, sensor):
+    def prediction(self, sensorValue):
         state = self.state
         P = self.state.getCovariance()
 
         # simply propagate the state and assign identity to covariance
-        predictedState = self.motionFunction(state, sensor)
+        predictedState = self.motionFunction(state, sensorValue)
         P_pred = np.eye(3)
 
         self.state.setTime(rospy.Time.now())
-        self.state.setState(predictedState.getState())
+        self.state.setMean(predictedState)
         self.state.setCovariance(P_pred)
 
 
@@ -42,4 +42,4 @@ class TestFilter:
         return deepcopy(self.state)
 
     def setState(self, state):
-        self.state = state
+        self.state = deepcopy(state)

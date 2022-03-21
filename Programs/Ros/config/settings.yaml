@@ -2,9 +2,8 @@
 ### World ###
 world_dimension: 2  # dimension of the world. 2 for 2D world, 3 for 3D world.
 
-
 ### Data Handler ###
-data_path: "./data/data.mat"
+dataType: "simulated"
 
 ### Robot System ###
 filter_name: "TestFilter"      # name of the filter 

@@ -3,7 +3,7 @@ import rospy
 import yaml
 from utils.utils import *
 
-class Sensor:
+class SensorValue:
 
     def __init__(self, linearVelocity = np.zeros(2), angularVelocity = np.zeros(1)):
      
