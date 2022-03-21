@@ -8,7 +8,7 @@ class RobotState:
     Robot State:
     2D: X = [x,y,theta]; position = [x,y]; orientation = [theta]
     '''
-    def __init__(self, time_stamp=None, position=None, orientation=None):
+    def __init__(self, time_stamp=None, position=np.zeros(2), orientation=np.zeros(1)):
         
         # load params
         with open("config/settings.yaml", 'r') as stream:
@@ -27,11 +27,8 @@ class RobotState:
         self.X = np.zeros(3)
         self.P = np.eye(3)
 
-        if position is not None:
-            self.setPosition(position)
-
-        if orientation is not None:
-            self.setOrientation(orientation)
+        self.setPosition(position)
+        self.setOrientation(orientation)
     
     def setTime(self, time_stamp):
         if time_stamp is not None and isinstance(id,float):
@@ -54,7 +51,6 @@ class RobotState:
 
     def setPositionCovariance(self, cov_in):
         self.P[0:2,0:2] = cov_in
-
 
     def getPositionCovariance(self):
         return np.copy(self.P[0:2,0:2])

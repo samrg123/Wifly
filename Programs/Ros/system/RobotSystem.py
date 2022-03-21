@@ -48,10 +48,9 @@ class RobotSystem:
         self.cmd_pub = path_publisher()  # theoratical command path
         self.gt_pub = path_publisher()   # actual robot path
 
-        self.loop_sleep_time = param['loop_sleep_time']
-
     def run_filter(self):
         
+        loopTime = rospy.get_time()
         while True:
             
             sample = self.data_handler.GetSample()
@@ -59,7 +58,9 @@ class RobotSystem:
                 return 
 
             # update model
-            self.filter.prediction(sample.sensorValue)
+            detaSensorValue = sample.sensorValue * sample.deltaT
+            self.filter.prediction(detaSensorValue)
+            # Log(f"sampleSensorValue: {sample.sensorValue} | deltaSensorValue: {detaSensorValue}")
 
             # publish estimate 
             esitmatedState = self.filter.getState()
@@ -71,9 +72,15 @@ class RobotSystem:
 
             # publish command state
             self.cmd_pub.publish_command_path(sample.commandState.getMeanVector())
+ 
 
-            # TODO: account for lag
-            rospy.sleep(self.loop_sleep_time)
+            endLoopTime = rospy.get_time()
+            deltaLoopTime = endLoopTime - loopTime
+            loopTime = endLoopTime
+
+            if deltaLoopTime < sample.deltaT:
+                rospy.sleep(deltaLoopTime)
+                 
     
 def main():
     rob_sys = RobotSystem()

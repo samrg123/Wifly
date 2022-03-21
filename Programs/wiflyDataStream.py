@@ -16,6 +16,7 @@ def main():
         
         try:
             wiflyConnection.SendCommand("read time accel gyro rssi", echo=False)
+            sleep(.025)
         except KeyboardInterrupt:
             Shutdown()
 

@@ -4,6 +4,8 @@ world_dimension: 2  # dimension of the world. 2 for 2D world, 3 for 3D world.
 
 ### Data Handler ###
 dataType: "simulated"
+# dataType: "log"
+dataSensorValueLog: "../sampleData.log"
 
 ### Robot System ###
 filter_name: "TestFilter"      # name of the filter 
@@ -26,5 +28,3 @@ command_path_topic: "command/path"
 ellipse_topic: "robot_state/nonlinear_cov"
 pose_topic: "robot_state/pose"
 path_topic: "robot_state/path"
-
-loop_sleep_time: 0.1

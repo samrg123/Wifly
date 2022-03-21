@@ -11,17 +11,28 @@ class SensorValue:
             param = yaml.safe_load(stream)
 
         # TODO: make these 3d when ready
-        self.linear_vel = linearVelocity
-        self.angular_vel = angularVelocity
-        
+        self.linearVelocity = linearVelocity
+        self.angularVelocity = angularVelocity
+    
+    def __mul__(self, x):
+        self.linearVelocity*= x
+        self.angularVelocity*= x
+        return self
+
+    def __rmul__(self, x):
+        return self.__mul__(x)
+            
+    def __str__(self):
+        return f"SensorValue {{ linearVelocity: {self.linearVelocity}, angularVelocity: {self.angularVelocity} }}"
+
     def getLinearVelocity(self):
-        return self.linear_vel
+        return self.linearVelocity
 
     def getAngularVelocity(self):
-        return self.angular_vel
+        return self.angularVelocity
 
     def setLinearVelocity(self, v):
-        self.linear_vel = np.copy(v)
+        self.linearVelocity = np.copy(v)
 
     def setAngularVelocity(self, w):
         self.angluar_vel = np.copy(w)
