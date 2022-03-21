@@ -1,10 +1,8 @@
 
-### World ###
-world_dimension: 2  # dimension of the world. 2 for 2D world, 3 for 3D world.
 
 ### Data Handler ###
-dataType: "simulated"
-# dataType: "log"
+# dataType: "simulated"
+dataType: "log"
 dataSensorValueLog: "../sampleData.log"
 
 ### Robot System ###
@@ -18,8 +16,19 @@ beta: 5 # approx 5 deg.
 
 # init state
 deltaT: 0.1
-initial_state_mean: [180, 50, 0]
-initial_state_variance: [1, 1, 1] 
+
+initial_state_mean: [
+  180, 50, # position 
+  0,       # orientation
+  0, 0     # velocity
+]
+
+# Note: in sqrt values
+initial_state_variance: [
+  1, 1, # position 
+  1,    # orientation
+  1, 1  # velocity
+] 
 
 ### path publisher ###
 path_frame_id: "map"

@@ -34,7 +34,6 @@ class path_publisher:
         self.path_frame = param['path_frame_id']
 
         self.filter_name = param['filter_name']
-        self.world_dim = param['world_dimension']
 
         self.path = Path()
         self.path.header.frame_id = self.path_frame
@@ -50,8 +49,8 @@ class path_publisher:
 
     def publish_pose(self, state):
 
-        position = state.getPosition()
-        orientation = state.getOrientation()
+        position = state.GetPosition()
+        orientation = float(state.GetOrientation())
 
         msg = PoseWithCovarianceStamped()
         msg.header.stamp = rospy.get_rostime()
@@ -59,24 +58,23 @@ class path_publisher:
         msg.pose.pose.position.x = position[0]
         msg.pose.pose.position.y = position[1]
 
-        if self.world_dim == 2:
-            msg.pose.pose.position.z = 0
-            rot = Rotation.from_euler('z',orientation,degrees=False)
-            quat = rot.as_quat()    # (x, y, z, w)
-            msg.pose.pose.orientation.x = quat[0]
-            msg.pose.pose.orientation.y = quat[1]
-            msg.pose.pose.orientation.z = quat[2]
-            msg.pose.pose.orientation.w = quat[3]
+        msg.pose.pose.position.z = 0
+        rot = Rotation.from_euler('z',orientation,degrees=False)
+        quat = rot.as_quat()    # (x, y, z, w)
+        msg.pose.pose.orientation.x = quat[0]
+        msg.pose.pose.orientation.y = quat[1]
+        msg.pose.pose.orientation.z = quat[2]
+        msg.pose.pose.orientation.w = quat[3]
 
-            cov = np.zeros((6,6))
-            if self.filter_name != "InEKF":
-                cov[0:2,0:2] = state.getCovariance()[0:2,0:2]
-            else:
-                ellipse_line_msg = self.make_ellipse(state)
-                self.ellipse_pub.publish(ellipse_line_msg)
+        cov = np.zeros((6,6))
+        if self.filter_name != "InEKF":
+            cov[0:2,0:2] = state.GetCovariance()[0:2,0:2]
+        else:
+            ellipse_line_msg = self.make_ellipse(state)
+            self.ellipse_pub.publish(ellipse_line_msg)
 
-            # We wish to visualize 3 sigma contour
-            msg.pose.covariance = np.reshape(9*cov,(-1,)).tolist()
+        # We wish to visualize 3 sigma contour
+        msg.pose.covariance = np.reshape(9*cov,(-1,)).tolist()
             
 
         self.pose_pub.publish(msg)
@@ -100,7 +98,7 @@ class path_publisher:
 
         scale = np.sqrt(7.815)
 
-        mean = state.getVector()
+        mean = state.GetMean()
         mean_matrix = np.eye(3)
         R = np.array([[np.cos(mean[2]),-np.sin(mean[2])],[np.sin(mean[2]),np.cos(mean[2])]])
 
@@ -122,7 +120,7 @@ class path_publisher:
         ellipse_line_msg.color.g = 41/255.0
         ellipse_line_msg.color.b = 41/255.0
         
-        L = np.linalg.cholesky(state.getCovariance())
+        L = np.linalg.cholesky(state.GetCovariance()[0:3, 0:3])
         for j in range(np.shape(circle)[0]):
             ell_se2_vec = scale * L @ circle[j,:].reshape(-1,1)
             temp = expm(G1 * ell_se2_vec[0] + G2 * ell_se2_vec[1] + G3 * ell_se2_vec[2]) @ mean_matrix
@@ -137,8 +135,8 @@ class path_publisher:
 
     def publish_state_path(self, state):
 
-        position = state.getPosition()
-        orientation = state.getOrientation()
+        position = state.GetPosition()
+        orientation = float(state.GetOrientation())
 
         pose = PoseStamped()
         pose.header.stamp = rospy.get_rostime()
@@ -146,14 +144,13 @@ class path_publisher:
         pose.pose.position.x = position[0]
         pose.pose.position.y = position[1]
 
-        if self.world_dim == 2:
-            pose.pose.position.z = 0
-            rot = Rotation.from_euler('z',orientation,degrees=False)
-            quat = rot.as_quat()    # (x, y, z, w)
-            pose.pose.orientation.x = quat[0]
-            pose.pose.orientation.y = quat[1]
-            pose.pose.orientation.z = quat[2]
-            pose.pose.orientation.w = quat[3]
+        pose.pose.position.z = 0
+        rot = Rotation.from_euler('z',orientation,degrees=False)
+        quat = rot.as_quat()    # (x, y, z, w)
+        pose.pose.orientation.x = quat[0]
+        pose.pose.orientation.y = quat[1]
+        pose.pose.orientation.z = quat[2]
+        pose.pose.orientation.w = quat[3]
 
         self.path.poses.append(pose)
 

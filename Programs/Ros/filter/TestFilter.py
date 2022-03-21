@@ -18,21 +18,23 @@ class TestFilter:
         self.state = RobotState()
 
         # init state
-        self.state.setMeanVector(init.mu)
-        self.state.setCovariance(init.Sigma)
+        self.state.SetMean(init.mu)
+        self.state.SetCovariance(init.Sigma)
 
     
-    def prediction(self, sensorValue):
+    def prediction(self, sensorValue, deltaT):
         state = self.state
-        P = self.state.getCovariance()
+        covariance = self.state.GetCovariance()
+
+        # TODO: WE NEED TO SWITCH TO PROPER SE(3) OTHERWISE FORCE OF GRAVITY MESSES UP 
+        #       ACCELERATION MODEL AND INTRODUCES DRIFT!
 
         # simply propagate the state and assign identity to covariance
-        predictedState = self.motionFunction(state, sensorValue)
-        P_pred = np.eye(3)
+        predictedState = self.motionFunction(state, sensorValue, deltaT)
+        predictedCovariance = covariance
 
-        self.state.setTime(rospy.Time.now())
-        self.state.setMean(predictedState)
-        self.state.setCovariance(P_pred)
+        self.state.SetMean(predictedState.GetMean())
+        self.state.SetCovariance(predictedCovariance)
 
 
     def correction(self, z):

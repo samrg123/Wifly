@@ -58,9 +58,7 @@ class RobotSystem:
                 return 
 
             # update model
-            detaSensorValue = sample.sensorValue * sample.deltaT
-            self.filter.prediction(detaSensorValue)
-            # Log(f"sampleSensorValue: {sample.sensorValue} | deltaSensorValue: {detaSensorValue}")
+            self.filter.prediction(sample.sensorValue, sample.deltaT)
 
             # publish estimate 
             esitmatedState = self.filter.getState()
@@ -68,10 +66,10 @@ class RobotSystem:
             self.sate_pub.publish_pose(esitmatedState)
 
             # publish ground truth 
-            self.gt_pub.publish_gt_path(sample.groundTruthState.getMeanVector())
+            self.gt_pub.publish_gt_path(sample.groundTruthState.GetMean())
 
             # publish command state
-            self.cmd_pub.publish_command_path(sample.commandState.getMeanVector())
+            self.cmd_pub.publish_command_path(sample.commandState.GetMean())
  
 
             endLoopTime = rospy.get_time()

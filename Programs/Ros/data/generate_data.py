@@ -138,17 +138,3 @@ def generateScript(initialStateMean, numSteps, alphas, beta, deltaT):
 
 
     return data
-
-# from scipy.io import loadmat
-# data = loadmat('./data/data2.mat')
-
-# deltaT = 0.1
-# initialStateMean = [180,50,0]
-# initialStateCov = np.eye(3)
-
-# alphas = np.array([0.00025,0.00005,0.0025,0.0005,0.0025,0.0005])**2
-
-# beta = 5/180*np.pi
-# numSteps = 100
-# data_generated = generateScript(initialStateMean, numSteps, alphas, beta, deltaT)
-# print(data_generated - data['data'])

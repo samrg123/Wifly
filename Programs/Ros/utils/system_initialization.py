@@ -8,37 +8,40 @@ from system.RobotState import RobotState
 class myStruct:
     pass
 
-def motionFunction(state, sensorValue):
+def MotionFunction(state, sensorValue, deltaT):
 
-    position = state.getPosition()
-    theta = state.getOrientation()
+    theta          = state.GetOrientation()
+    position       = state.GetPosition()
+    linearVelocity = state.GetVelocity()
 
-    linearVelocity = sensorValue.getLinearVelocity()
-    angularVelocity = sensorValue.getAngularVelocity()
+    angularVelocity    = sensorValue.GetAngularVelocity()
+    linearAcceleration = sensorValue.GetLinearAcceleration()
 
     return RobotState(
-        position = position + linearVelocity,
-        orientation = theta + angularVelocity 
+        position    = position + linearVelocity * deltaT,
+        orientation = theta + angularVelocity * deltaT,
+        velocity    = linearVelocity + linearAcceleration * deltaT
     )
 
 def GetNoise(linearVelocity, angularVelocity, velocityNoiseDensity, angularVelocityNoiseDensity):
     return velocityNoiseDensity * np.linalg.norm(linearVelocity) + \
            angularVelocityNoiseDensity * angularVelocity*angularVelocity
 
-def MotionNoiseFunction(sensorValue, alphas):
-    v = sensorValue.getLinearVelocity()
-    w = sensorValue.getAngularVelocity()
+# TODO: add alphas for the accleration terms
+def MotionNoiseFunction(state, sensorValue, alphas):
+    linearVelocity = sensorValue.GetVelocity()
+    angularVelocity = sensorValue.GetAngularVelocity()
     
     return np.diag([
-        GetNoise(v, w, alphas[0], alphas[1]),
-        GetNoise(v, w, alphas[2], alphas[3]),
-        GetNoise(v, w, alphas[4], alphas[5])
+        GetNoise(linearVelocity, angularVelocity, alphas[0], alphas[1]),
+        GetNoise(linearVelocity, angularVelocity, alphas[2], alphas[3]),
+        GetNoise(linearVelocity, angularVelocity, alphas[4], alphas[5])
     ])
 
 def system_initialization(alphas):
 
     sys = myStruct()
-    sys.motionFunction = motionFunction
+    sys.motionFunction = MotionFunction
     sys.motionNoiseMatrix = partial(MotionNoiseFunction, alphas=alphas)
 
     return sys

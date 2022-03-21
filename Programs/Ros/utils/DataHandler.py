@@ -62,8 +62,10 @@ class DataHandler:
 
                 self.numSamples = generatedData.shape[0]
 
-                # Note: generatedData multiplies motionCommand by deltaT so we divide it back 
-                self.motionCommand = np.array(generatedData[:,6:9]) / self.deltaT # [Trans_vel,Angular_vel,gamma]' noisy control command
+                # Note: generatedData multiplies linear velocity by deltaT so we divide it back to get m/s
+                #       angular velocity is already in rad/sec
+                self.motionCommand = np.array(generatedData[:,6:9]) # [Trans_vel,Angular_vel,gamma]' noisy control command
+                self.motionCommand[:, 0]/= self.deltaT
 
                 self.actual_state = np.array(generatedData[:,15:18])
                 self.noise_free_state = np.array(generatedData[:,18:21]) 
@@ -80,28 +82,53 @@ class DataHandler:
             return False
 
         actualStateVec = self.data.actual_state[t,:]
+        commandStateVec = self.data.noise_free_state[t]
+        motionCommandVec = self.data.motionCommand[t,:]
+        
         actualTheta = actualStateVec[2]
+        motionVelocity = np.array([
+            motionCommandVec[0] * np.cos(actualTheta),
+            motionCommandVec[0] * np.sin(actualTheta)
+        ])
+        
+        if t > 0:
+            lastActualStateVec = self.data.actual_state[t-1,:]  
+            lastCommandStateVec = self.data.noise_free_state[t-1]
+            lastMotionCommandVect = self.data.motionCommand[t-1,:]
+
+            actualVelocity = lastActualStateVec[0:2] - actualStateVec[0:2]
+            commandVelocity = lastCommandStateVec[0:2] - commandStateVec[0:2]
+
+            lastMotionVelocity = np.array([
+                lastMotionCommandVect[0] * np.cos(lastActualStateVec[2]),
+                lastMotionCommandVect[0] * np.sin(lastActualStateVec[2])
+            ])
+
+            motionAcceleration = motionVelocity - lastMotionVelocity
+
+        else:
+            actualVelocity = np.zeros(2)
+            commandVelocity = np.zeros(2)
+            motionAcceleration = motionVelocity
+  
+        inverseDeltaT = 1./self.data.deltaT
+
         groundTruthState = RobotState(
             position = actualStateVec[0:2],
-            orientation = actualTheta
+            orientation = actualTheta,
+            velocity = actualVelocity * inverseDeltaT
         )
-
-        commandStateVec = self.data.noise_free_state[t]
+        
         commandState = RobotState(
             position = commandStateVec[0:2],
-            orientation = commandStateVec[2]
+            orientation = commandStateVec[2],
+            velocity = commandVelocity * inverseDeltaT
         )
 
-        motionCommand = self.data.motionCommand[t,:]
-        motionVelocity, angularVelocity = motionCommand[0:2]
         sensorValue = SensorValue(
-            linearVelocity = np.array([
-                motionVelocity * np.cos(actualTheta),
-                motionVelocity * np.sin(actualTheta)
-            ]),
-
-            angularVelocity = angularVelocity
-        )
+            linearAcceleration = motionAcceleration,
+            angularVelocity = motionCommandVec[1]
+        ) * inverseDeltaT
 
         sample = DataSample(
             deltaT = self.data.deltaT,
@@ -128,7 +155,7 @@ class DataHandler:
 
                 lastTimestamp = None
                 timestamp = None
-                linearVelocity = None
+                linearAcceleration = None
                 angularVelocity = None
                 for lineIndex, line in enumerate(lines):
 
@@ -143,8 +170,8 @@ class DataHandler:
                         if timestamp is None:
                             Warn(f"Missing timestamp in for sensorValue | {sensorValueFileName}:{lineNumber}")
                         
-                        elif linearVelocity is None:
-                            Warn(f"Missing linearVelocity in for sensorValue | {sensorValueFileName}:{lineNumber}")
+                        elif linearAcceleration is None:
+                            Warn(f"Missing linearAcceleration in for sensorValue | {sensorValueFileName}:{lineNumber}")
                         
                         elif angularVelocity is None:
                             Warn(f"Missing angularVelocity in for sensorValue | {sensorValueFileName}:{lineNumber}")
@@ -156,7 +183,7 @@ class DataHandler:
                             
                                 # TODO: convert to 3D when ready! 
                                 sensorValue = SensorValue(
-                                    linearVelocity = np.array(linearVelocity[0:2]),
+                                    linearAcceleration = np.array(linearAcceleration[0:2]),
                                     angularVelocity = np.array(angularVelocity[2])
                                 )
                                 
@@ -167,7 +194,7 @@ class DataHandler:
                                 lastTimestamp = timestamp
 
                         timestamp = None
-                        linearVelocity = None
+                        linearAcceleration = None
                         angularVelocity = None                        
 
                     else:
@@ -195,17 +222,17 @@ class DataHandler:
 
                         elif valueType == "accel":
 
-                            if linearVelocity is not None:
-                                Warn(f"Multiple linearVelocity values for sensorValue | original timestamp {linearVelocity} new timestamp {value} | {sensorValueFileName}:{lineNumber}")
+                            if linearAcceleration is not None:
+                                Warn(f"Multiple linearAcceleration values for sensorValue | original timestamp {linearAcceleration} new timestamp {value} | {sensorValueFileName}:{lineNumber}")
 
 
                             try:
                                 x, y, z = parse("{{ {:g}, {:g}, {:g} }}", value)
                             except Exception:
-                                Warn(f"Failed to parse linearVelocity '{value}' | {sensorValueFileName}:{lineNumber}")
+                                Warn(f"Failed to parse linearAcceleration '{value}' | {sensorValueFileName}:{lineNumber}")
                                 continue
 
-                            linearVelocity = np.array([x, y, z])
+                            linearAcceleration = np.array([x, y, z])
 
                         elif valueType == "gyro":
 
