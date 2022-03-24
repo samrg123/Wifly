@@ -5,12 +5,8 @@ from utils.utils import *
 
 class SensorValue:
 
-    def __init__(self, linearAcceleration = np.zeros(2), angularVelocity = np.zeros(1)):
-     
-        with open("config/settings.yaml", 'r') as stream:
-            param = yaml.safe_load(stream)
+    def __init__(self, linearAcceleration = np.zeros(3), angularVelocity = np.zeros(3)):
 
-        # TODO: make these 3d when ready
         self.linearAcceleration = linearAcceleration
         self.angularVelocity = angularVelocity
     
@@ -32,8 +28,8 @@ class SensorValue:
         return np.copy(self.angularVelocity)
 
     def SetLinearAcceleration(self, a):
-        self.linearAcceleration = np.copy(a)
+        np.copyto(self.linearAcceleration, a)
 
     def setAngularVelocity(self, w):
-        self.angluar_vel = np.copy(w)
+        np.copyto(self.angluar_vel, w)
 

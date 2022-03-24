@@ -40,8 +40,8 @@ class TestFilter:
     def correction(self, z):
         assert False, "Not Implemented"
 
-    def getState(self):
+    def GetState(self):
         return deepcopy(self.state)
 
-    def setState(self, state):
+    def SetState(self, state):
         self.state = deepcopy(state)

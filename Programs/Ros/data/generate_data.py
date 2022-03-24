@@ -67,14 +67,6 @@ def pose_mat(X):
                     [0,0,1]])
     return H
 
-def observation(state, id, FIELD_INFO):
-    dx = FIELD_INFO.marker_pos[id,0] - state[0]
-    dy = FIELD_INFO.marker_pos[id,1] - state[1]
-    
-    obs = np.array([wrap2Pi(np.arctan2(dy,dx)-state[2]), np.sqrt(dx**2+dy**2), id])
-
-    return obs
-
 def generateScript(initialStateMean, numSteps, alphas, beta, deltaT):
     observationDim = 3 # observation size (range, bearing, marker ID)
 

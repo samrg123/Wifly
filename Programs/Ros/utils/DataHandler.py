@@ -7,15 +7,11 @@ import os
 from parse import parse
 
 from system.SensorValue import SensorValue
-from system.RobotState import RobotState
 from utils.utils import *
 
-class DataSample:
-    def __init__(self, deltaT = 1, sensorValue = SensorValue(), commandState = RobotState(), groundTruthState = RobotState()):
-        self.deltaT = deltaT
-        self.sensorValue = sensorValue
-        self.commandState = commandState
-        self.groundTruthState = groundTruthState        
+from data.DataSimulator import DataSimulator
+
+from utils.system_initialization import gAccelerometerBias, gGyroBias
 
 class DataHandler:
 
@@ -23,26 +19,25 @@ class DataHandler:
         with open("config/settings.yaml", 'r') as stream:
             param = yaml.safe_load(stream)
         
-        self.param = param
-        self.sampleIndex = 0
-
         dataType = param['dataType']
         self.dataType = dataType
+        
         if dataType == "simulated":
 
-            self.LoadSimulatedSamples()
-            self.GetSample = self.GetSimulatedSample
+            self.dataSampler = DataSimulator()
 
         elif dataType == "log":
-        
-            self.LoadLogSamples()
-            self.GetSample = self.GetLogSample
+            pass 
+            # self.LoadLogSamples()
+            # self.GetSample = self.GetLogSample
         
         elif dataType == "streamed":
             Panic("Not Implemented")
         else:
             Panic(f"Unsupported dataType: {dataType}")
         
+        self.dataSampler.LoadSamples()
+
     def LoadSimulatedSamples(self):
         
         class Data:
@@ -50,15 +45,24 @@ class DataHandler:
 
                 with open("config/settings.yaml", 'r') as stream:
                     param = yaml.safe_load(stream)
-                    alphas = np.array(param['alphas_sqrt'])**2 
-                    beta = param['beta']/180*np.pi
 
                 numSteps = 100
                 self.deltaT = 0.1
-                initialStateMean = [180,50,0]
                 initialStateCov = np.eye(3)
+                alphas = np.array(param['alphas_sqrt'])**2 
+                beta = param['beta']/180*np.pi
+                initialStateMean = param['initial_state_vals'][3:6]
                 
-                generatedData = generateScript(initialStateMean, numSteps, alphas, beta, self.deltaT)
+                # Note: prepend 0 acceleration to generated data so we can compute acceleration for first step
+                scriptData = generateScript(initialStateMean, numSteps, alphas, beta, self.deltaT)
+                generatedData = np.vstack((scriptData[0], scriptData))
+                generatedData[0,6:9] = 0
+                
+                # offset inserted state by velocity
+                generatedData[0,15:18]-= generatedData[1,15:18]
+                generatedData[0,18:21]-= generatedData[1,18:21]
+
+
 
                 self.numSamples = generatedData.shape[0]
 
@@ -69,9 +73,6 @@ class DataHandler:
 
                 self.actual_state = np.array(generatedData[:,15:18])
                 self.noise_free_state = np.array(generatedData[:,18:21]) 
-
-                self.noisefreeBearing_1 = np.array(generatedData[:, 9])
-                self.noisefreeBearing_2 = np.array(generatedData[:, 12])
 
         self.data = Data()
 
@@ -90,45 +91,70 @@ class DataHandler:
             motionCommandVec[0] * np.cos(actualTheta),
             motionCommandVec[0] * np.sin(actualTheta)
         ])
-        
-        if t > 0:
-            lastActualStateVec = self.data.actual_state[t-1,:]  
-            lastCommandStateVec = self.data.noise_free_state[t-1]
-            lastMotionCommandVect = self.data.motionCommand[t-1,:]
 
-            actualVelocity = lastActualStateVec[0:2] - actualStateVec[0:2]
-            commandVelocity = lastCommandStateVec[0:2] - commandStateVec[0:2]
+        if t > 0:
+            lastT = t-1
+            lastActualStateVec = self.data.actual_state[lastT,:]  
+            lastCommandStateVec = self.data.noise_free_state[lastT]
+            lastMotionCommandVec = self.data.motionCommand[lastT,:]
+
+            actualVelocity = actualStateVec - lastActualStateVec 
+            commandVelocity = commandStateVec - lastCommandStateVec 
 
             lastMotionVelocity = np.array([
-                lastMotionCommandVect[0] * np.cos(lastActualStateVec[2]),
-                lastMotionCommandVect[0] * np.sin(lastActualStateVec[2])
+                lastMotionCommandVec[0] * np.cos(lastActualStateVec[2]),
+                lastMotionCommandVec[0] * np.sin(lastActualStateVec[2])
             ])
 
-            motionAcceleration = motionVelocity - lastMotionVelocity
+            # motionAcceleration = motionVelocity - lastMotionVelocity
 
         else:
-            actualVelocity = np.zeros(2)
-            commandVelocity = np.zeros(2)
-            motionAcceleration = motionVelocity
-  
+            actualVelocity = np.zeros(3)
+            commandVelocity = np.zeros(3)
+            motionAcceleration = np.zeros(2)
+
+        nextT = t+1
+        if nextT < self.data.numSamples:
+
+            nextActualStateVec = self.data.actual_state[nextT,:]
+            nextMotionCommandVec = self.data.motionCommand[nextT,:]
+
+            nextActualVelocity = nextActualStateVec - actualStateVec
+
+            nextMotionVelocity = np.array([
+                nextMotionCommandVec[0] * np.cos(nextActualStateVec[2]),
+                nextMotionCommandVec[0] * np.sin(nextActualStateVec[2])
+            ])
+
+            # motionAcceleration = nextMotionVelocity - motionVelocity
+            motionAcceleration = (nextActualVelocity[0:2] - actualVelocity[0:2]) / self.data.deltaT
+            # motionAcceleration[0]*= np.cos(actualTheta)
+            # motionAcceleration[0]*= np.cos(actualTheta)
+            
+            # motionAcceleration = np.zeros(2)
+
+        else:
+            motionAcceleration = np.zeros(2)
+
         inverseDeltaT = 1./self.data.deltaT
 
         groundTruthState = RobotState(
-            position = actualStateVec[0:2],
-            orientation = actualTheta,
-            velocity = actualVelocity * inverseDeltaT
+            position    = np.append(actualStateVec[0:2], 0),
+            orientation = np.array([0, 0, actualTheta]),
+            velocity    = np.append(actualVelocity[0:2] * inverseDeltaT, 0)
         )
         
         commandState = RobotState(
-            position = commandStateVec[0:2],
-            orientation = commandStateVec[2],
-            velocity = commandVelocity * inverseDeltaT
+            position    = np.append(commandStateVec[0:2], 0),
+            orientation = np.array([0, 0, commandStateVec[2]]),
+            velocity    = np.append(commandVelocity[0:2] * inverseDeltaT, 0)
         )
 
         sensorValue = SensorValue(
-            linearAcceleration = motionAcceleration,
-            angularVelocity = motionCommandVec[1]
-        ) * inverseDeltaT
+            linearAcceleration = np.append(motionAcceleration * inverseDeltaT, 0) + gAccelerometerBias.reshape(-1),
+            # angularVelocity    = np.append([0, 0], motionCommandVec[1] * inverseDeltaT)
+            angularVelocity    = np.append([0, 0], actualVelocity[2] * inverseDeltaT) + gGyroBias.reshape(-1)
+        )
 
         sample = DataSample(
             deltaT = self.data.deltaT,
@@ -180,11 +206,10 @@ class DataHandler:
 
                             # filter out all reapeated sensor values
                             if lastTimestamp != timestamp:                                
-                            
-                                # TODO: convert to 3D when ready! 
+                             
                                 sensorValue = SensorValue(
-                                    linearAcceleration = np.array(linearAcceleration[0:2]),
-                                    angularVelocity = np.array(angularVelocity[2])
+                                    linearAcceleration = linearAcceleration,
+                                    angularVelocity = angularVelocity
                                 )
                                 
                                 # Note: log timestamp is in microseconds 

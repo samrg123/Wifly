@@ -2,7 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import expm, logm
 
+from numpy.random import default_rng
 from system.RobotState import *
+
+gForceOfGravity = 9.80665
+gRng = default_rng()
 
 def Panic(str, errorCode = 1):
     print(f"PANIC - {str}")

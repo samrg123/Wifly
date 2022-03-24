@@ -406,7 +406,7 @@ class Wifly {
             esp.PrintDetails();
 
             display.println("Connecting IMU\n");
-            imu.Init();
+            imu.Init(MPU6050_RANGE_2_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_260_HZ);
             
             display.printf("Connecting WIFI:\n'%s'\n\n", kSSID);
 

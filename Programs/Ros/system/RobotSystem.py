@@ -36,10 +36,16 @@ class RobotSystem:
             print("Plase provide a world!")
 
         # load filter
-        init_state_mean = np.array(param['initial_state_mean'])
+        init_state_vals = np.array(param['initial_state_vals'])
+        init_state = RobotState(
+            orientation = init_state_vals[0:3],
+            velocity = init_state_vals[3:6],
+            position = init_state_vals[6:9]
+        )
+
         init_state_cov = np.diag(param['initial_state_variance'])**2        
         filter_name = param['filter_name']
-        self.filter = filter_initialization(self.system, init_state_mean, init_state_cov, filter_name)
+        self.filter = filter_initialization(self.system, init_state.GetMean(), init_state_cov, filter_name)
 
         # load data
         self.data_handler = DataHandler()
@@ -53,23 +59,34 @@ class RobotSystem:
         loopTime = rospy.get_time()
         while True:
             
-            sample = self.data_handler.GetSample()
+            sample = self.data_handler.dataSampler.GetSample()
             if sample == False:
                 return 
 
+            print("O_PRED:", self.filter.GetState())
+            print("ACCEL: ", sample.sensorValue)
+
             # update model
             self.filter.prediction(sample.sensorValue, sample.deltaT)
+            
+            print("N_PRED:", self.filter.GetState())
+            
+            print("CMD:   ", sample.commandState)
+            print("GT:    ", sample.groundTruthState)
+            print("")
+
 
             # publish estimate 
-            esitmatedState = self.filter.getState()
+            esitmatedState = self.filter.GetState()
+            esitmatedState.SetPosition(esitmatedState.GetPosition())
             self.sate_pub.publish_state_path(esitmatedState)
             self.sate_pub.publish_pose(esitmatedState)
 
             # publish ground truth 
-            self.gt_pub.publish_gt_path(sample.groundTruthState.GetMean())
+            self.gt_pub.publish_gt_path(sample.groundTruthState)
 
             # publish command state
-            self.cmd_pub.publish_command_path(sample.commandState.GetMean())
+            self.cmd_pub.publish_command_path(sample.commandState)
  
 
             endLoopTime = rospy.get_time()

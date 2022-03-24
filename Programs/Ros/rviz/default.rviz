@@ -6,13 +6,11 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Path1/Status1
-        - /PoseWithCovariance1/Status1
+        - /CMD Path1
         - /PoseWithCovariance1/Covariance1
         - /PoseWithCovariance1/Covariance1/Position1
         - /PoseWithCovariance1/Covariance1/Orientation1
-        - /Path2/Status1
-        - /Path3
+        - /PRED Path1
       Splitter Ratio: 0.5
     Tree Height: 680
   - Class: rviz/Selection
@@ -70,7 +68,7 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: Path
+      Name: CMD Path
       Offset:
         X: 0
         Y: 0
@@ -125,7 +123,7 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: Path
+      Name: GT Path
       Offset:
         X: 0
         Y: 0
@@ -149,7 +147,7 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: Path
+      Name: PRED Path
       Offset:
         X: 0
         Y: 0
@@ -191,7 +189,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 418.78619384765625
+      Distance: 383.9107360839844
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -199,17 +197,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 272.34228515625
-        Y: 115.58560943603516
-        Z: -7.999327659606934
+        X: 2.301501989364624
+        Y: 7.180639266967773
+        Z: 8.542837142944336
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.4947963953018188
+      Pitch: 0.9132031202316284
       Target Frame: map
-      Yaw: 4.708581924438477
+      Yaw: 4.610179901123047
     Saved: ~
 Window Geometry:
   Displays:
@@ -227,5 +225,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: 3840
-  Y: 23
+  X: 1920
+  Y: 30
