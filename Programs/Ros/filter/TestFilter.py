@@ -12,8 +12,7 @@ class TestFilter:
 
         #   system: system and noise models
         #   init:   initial state mean and covariance
-        self.motionFunction = system.motionFunction
-        self.motionNoiseMatrix = system.motionNoiseMatrix
+        self.motionFunction = system.MotionFunction
 
         self.state = RobotState()
 

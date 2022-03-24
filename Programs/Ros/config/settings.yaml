@@ -1,27 +1,21 @@
 
-
 ### Data Handler ###
 dataType: "simulated"
+deltaT: 0.1
+numSamples: 100
+numStates: 4
+
 # dataType: "log"
-dataSensorValueLog: "../sampleData5.log"
+# dataSensorValueLog: "../sampleData.log"
+# computeBiasSamples: 5
 
 ### Robot System ###
-filter_name: "TestFilter"      # name of the filter 
+filter_name: "TestFilter" 
 
-# motion noise (in odometry space, see Table 5.5, p.134 in book).
-# alphas_sqrt: [
-#   0.00025,  0.00005,  0.0025, 
-#   0.0005,   0.0025,   0.0005
-# ]  
 alphas_sqrt: [
   0,  0,  0, 
   0,  0,  0
 ]
-# sensor noise
-beta: 5 # approx 5 deg.
-
-# init state
-deltaT: 0.1
 
 initial_state_vals: [
   0, 0,  0, # orientation

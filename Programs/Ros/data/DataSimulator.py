@@ -29,13 +29,21 @@ class MotionNoise:
 
 class DataSimulator:
     
-    def __init__(self, numSamples = 100, deltaT = .1, numStates = 5):
+    def __init__(self, params, system):
     
         self.sampleIndex = 0
+        self.params = params
+        self.system = system
 
-        self.numSamples = numSamples
-        self.deltaT = deltaT
-        self.numStates = numStates
+        # TODO: ADD NOISE PARAMS INSTEAD OF HARD-CODING THEM IN LoadSamples()
+
+        self.deltaT     = GetParam(params, "deltaT",  .1)
+        self.numStates  = GetParam(params, "numStates",  4)
+        self.numSamples = GetParam(params, "numSamples",  100)
+
+
+    def Reset(self):
+        self.sampleIndex = 0
 
     def GenerateCommandStates(self):
 
@@ -119,9 +127,11 @@ class DataSimulator:
         lastState = RobotState()
         for i, state in enumerate(states):
 
+            rotationMatrix = lastState.GetRotationMatrix()
+
             sensorValue = SensorValue(
-                angularVelocity = (state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT,
-                linearAcceleration = (state.GetVelocity() - lastState.GetVelocity()) * inverseDeltaT 
+                angularVelocity    = rotationMatrix @ (state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT + self.system.gyroBias,
+                linearAcceleration = rotationMatrix @ (state.GetVelocity() - lastState.GetVelocity()) * inverseDeltaT + self.system.accelerometerBias
             )
 
             lastState = state

@@ -23,11 +23,9 @@ class RobotSystem:
 
         # load params
         with open("config/settings.yaml", 'r') as stream:
-            param = yaml.safe_load(stream)
+            params = yaml.safe_load(stream)
         
-        # load motion noise and sensor noise
-        alphas = np.array(param['alphas_sqrt'])**2
-        self.system = system_initialization(alphas)
+        self.system = system_initialization(params)
 
         # load world and landmarks
         if world is not None:
@@ -36,19 +34,20 @@ class RobotSystem:
             print("Plase provide a world!")
 
         # load filter
-        init_state_vals = np.array(param['initial_state_vals'])
+        init_state_vals = np.array(params['initial_state_vals'])
         init_state = RobotState(
             orientation = init_state_vals[0:3],
-            velocity = init_state_vals[3:6],
-            position = init_state_vals[6:9]
+            velocity    = init_state_vals[3:6],
+            position    = init_state_vals[6:9]
         )
+        init_state_cov = np.diag(params['initial_state_variance'])**2        
+        init_state.SetCovariance(init_state_cov)
 
-        init_state_cov = np.diag(param['initial_state_variance'])**2        
-        filter_name = param['filter_name']
+        filter_name = params['filter_name']
         self.filter = filter_initialization(self.system, init_state.GetMean(), init_state_cov, filter_name)
 
         # load data
-        self.data_handler = DataHandler()
+        self.data_handler = DataHandler(self.system)
 
         self.sate_pub = path_publisher() # filter pose
         self.cmd_pub = path_publisher()  # theoratical command path
@@ -63,17 +62,16 @@ class RobotSystem:
             if sample == False:
                 return 
 
-            print("O_PRED:", self.filter.GetState())
-            print("ACCEL: ", sample.sensorValue)
+            # print("O_PRED:", self.filter.GetState())
+            # print("ACCEL: ", sample.sensorValue)
 
             # update model
             self.filter.prediction(sample.sensorValue, sample.deltaT)
             
-            print("N_PRED:", self.filter.GetState())
-            
-            print("CMD:   ", sample.commandState)
-            print("GT:    ", sample.groundTruthState)
-            print("")
+            # print("N_PRED:", self.filter.GetState())
+            # print("CMD:   ", sample.commandState)
+            # print("GT:    ", sample.groundTruthState)
+            # print("")
 
 
             # publish estimate 

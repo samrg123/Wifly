@@ -1,79 +1,75 @@
 
 import numpy as np
-from functools import partial
 from scipy.linalg import expm, block_diag
 
 from utils.utils import *
 from system.RobotState import RobotState
 
-class myStruct:
-    pass
+class system_initialization:
 
-gGyroBias = np.zeros((3, 1))
-# gGyroBias = np.array([[ -0.02051761, 0.006928025, 0.3009694]]).T
-# gGyroBias = np.array([[ -0.08460183, 0.008393568, 0.008526799]]).T
+    def __init__(self, params):
 
-gAccelerometerBias = np.zeros((3, 1))
-# gAccelerometerBias = np.array([[0, 0, 9.80665]]).T
-# gAccelerometerBias = np.array([[ 0.6105214, -0.3591303, 9.437943 ]]).T
+        self.gyroBias          = GetParam(params, "gyroBias",     np.zeros(3))
+        self.velocityBias      = GetParam(params, "velocityBias", np.zeros(3))
+        self.accelerometerBias = GetParam(params, "acclerometerBias", np.array([0, 0, gForceOfGravity]))
 
-gVelocityBias = np.zeros((3, 1))
+    def MotionFunction(self, state, sensorValue, deltaT):
 
-def MotionFunction(state, sensorValue, deltaT):
+        # # Mani Gamma functions
+        # rotationMatrix     = state.GetRotationMatrix()
+        # angularVelocity    = sensorValue.GetAngularVelocity()
+        # linearAcceleration = sensorValue.GetLinearAcceleration()
 
-    # derivative of state in sensor frame
-    biasedDerivate = np.hstack((
-        sensorValue.GetAngularVelocity(),
-        sensorValue.GetLinearAcceleration(),
-        state.GetVelocity()
-    )).reshape((-1, 1))
+        # Gamma1 = system_initialization.Gamma1
+        # Gamma2 = system_initialization.Gamma2
+        # deltaVelocity  = (rotationMatrix @ Gamma1(angularVelocity * deltaT) @ linearAcceleration - gAccelerometerBias.T) * deltaT
+        # deltaPosition  = state.GetVelocity() * deltaT + rotationMatrix @ Gamma2(angularVelocity * deltaT) @ (linearAcceleration  - .5*gGravity.reshape(-1)) * deltaT*deltaT
+        # r = RobotState(
+        #     velocity = state.GetVelocity() + deltaVelocity,
+        #     position = state.GetPosition() + deltaPosition
+        # )
+        # r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3(angularVelocity * deltaT) ) )
 
-    # sensor bias in world frame
-    bias = np.vstack((gGyroBias, gAccelerometerBias, gVelocityBias))
+        # Normal Integration
+        rotationMatrix     = state.GetRotationMatrix()
+        angularVelocity    = sensorValue.GetAngularVelocity()
+        linearAcceleration = sensorValue.GetLinearAcceleration()
+        
+        r = RobotState(
+            velocity    = state.GetVelocity() + (rotationMatrix.T @ linearAcceleration - self.accelerometerBias) * deltaT,
+            position    = state.GetPosition() + (state.GetVelocity() - self.velocityBias) * deltaT
+        )
+        r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3( (angularVelocity - self.gyroBias) * deltaT) ))
+        
+        return r
 
-    # compute delta state in world frame
-    # inverseRotationMatrix = np.linalg.inv(state.GetRotationMatrix())
-    inverseRotationMatrix = state.GetRotationMatrix().T
-    stackedInverseRotationMatrix = block_diag(inverseRotationMatrix, inverseRotationMatrix, inverseRotationMatrix)
+    @staticmethod
+    def Gamma1(omega):
+        omegaNorm = np.linalg.norm(omega)
 
-    derivative = stackedInverseRotationMatrix @ biasedDerivate - bias
-    deltaState = RobotState.Wedge(derivative*deltaT)
-    
-    # print("deltaState")
-    # print(deltaState)
+        if omegaNorm == 0.:
+            return np.eye(3)
 
-    # print("expm(deltaState)")
-    # print(expm(deltaState))
+        omegaNormSquared = omegaNorm*omegaNorm
+        omegaWedge = RobotState.WedgeSO3(omega)
 
-    # return integrated state
+        return np.eye(3) + \
+            (1 - np.cos(omegaNorm))/omegaNormSquared * omegaWedge + \
+            (omegaNorm - np.sin(omegaNorm))/(omegaNormSquared * omegaNorm) * omegaWedge @ omegaWedge
 
-    r = RobotState.FromMean( state.GetMean() @ expm(deltaState) )
+    @staticmethod
+    def Gamma2(omega):
 
-    return r
+        halfI = .5*np.eye(3)
 
-def GetNoise(linearVelocity, angularVelocity, velocityNoiseDensity, angularVelocityNoiseDensity):
-    return velocityNoiseDensity * np.linalg.norm(linearVelocity) + \
-           angularVelocityNoiseDensity * angularVelocity*angularVelocity
+        omegaNorm = np.linalg.norm(omega)
+        if omegaNorm == 0.:
+            return halfI
 
-# TODO: add alphas for the accleration terms
-def MotionNoiseFunction(state, sensorValue, alphas):
-    
-    Panic("RETURN 9x9 noise matrix that uses noise density on diagonal")
-    
-    linearVelocity = sensorValue.GetVelocity()
-    angularVelocity = sensorValue.GetAngularVelocity()
-    
-    return np.diag([
-        GetNoise(linearVelocity, angularVelocity, alphas[0], alphas[1]),
-        GetNoise(linearVelocity, angularVelocity, alphas[2], alphas[3]),
-        GetNoise(linearVelocity, angularVelocity, alphas[4], alphas[5])
-    ])
+        omegaNormSquared = omegaNorm*omegaNorm
+        omegaWedge = RobotState.WedgeSO3(omega)
 
-def system_initialization(alphas):
-
-    sys = myStruct()
-    sys.motionFunction = MotionFunction
-    sys.motionNoiseMatrix = partial(MotionNoiseFunction, alphas=alphas)
-
-    return sys
+        return halfI + \
+            (omegaNorm - np.sin(omegaNorm))/(omegaNormSquared * omegaNorm) * omegaWedge + \
+            (omegaNormSquared + 2*np.cos(omegaNorm) - 2)/(2*omegaNormSquared * omegaNormSquared) * omegaWedge @ omegaWedge        
 

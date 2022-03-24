@@ -4,8 +4,6 @@ import rospy
 import yaml
 from utils.utils import *
 
-
-
 class RobotState:
     '''
     Robot State:
@@ -45,6 +43,14 @@ class RobotState:
         r = RobotState()
         np.copyto(r._mean, mean)
         return r
+
+    @staticmethod
+    def WedgeSO3(theta):
+        return np.array([
+            [ 0,         -theta[2],  theta[1]],
+            [ theta[2],  0,         -theta[0]],
+            [-theta[1],  theta[0],   0       ] 
+        ])
 
     @staticmethod
     def Wedge(derivative):
