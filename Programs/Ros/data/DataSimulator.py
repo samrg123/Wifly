@@ -41,34 +41,35 @@ class DataSimulator:
         self.numStates  = GetParam(params, "numStates",  4)
         self.numSamples = GetParam(params, "numSamples",  100)
 
+        self.velocityNorm = GetParam(params, "velocityNorm", 10)        
+        self.stateTransitionWidth = GetParam(params, "stateTransitionWidth", .1)
+
 
     def Reset(self):
         self.sampleIndex = 0
 
     def GenerateCommandStates(self):
 
-        numStates = self.numStates
-        stateTransitionWidth = .1 
-        velocityNorm = 10
-
         commandStates = np.empty(self.numSamples, dtype="object")
         
         lastRobotState = RobotState()
         commandStates[0] = lastRobotState
 
+        numStates = self.numStates
+        
         for i in range(self.numSamples):
             
             statePosition = numStates * (i / self.numSamples)
             state = statePosition % numStates
         
-            if abs(statePosition - int(statePosition)) < .5*stateTransitionWidth:
+            if (statePosition - int(statePosition)) >= (1 - self.stateTransitionWidth):
                 theta = np.radians(state * 360/numStates)
             else:
                 theta = np.radians(int(state) * 360/numStates)
 
             robotState = RobotState(
                 position    = lastRobotState.GetPosition() + lastRobotState.GetVelocity() * self.deltaT,
-                velocity    = velocityNorm * np.array([np.cos(theta), np.sin(theta), 0]),
+                velocity    = self.velocityNorm * np.array([np.cos(theta), np.sin(theta), 0]),
                 orientation = [0, 0, theta]
             )
 
@@ -130,8 +131,8 @@ class DataSimulator:
             rotationMatrix = lastState.GetRotationMatrix()
 
             sensorValue = SensorValue(
-                angularVelocity    = rotationMatrix @ (state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT + self.system.gyroBias,
-                linearAcceleration = rotationMatrix @ (state.GetVelocity() - lastState.GetVelocity()) * inverseDeltaT + self.system.accelerometerBias
+                angularVelocity    = rotationMatrix @ ((state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT + self.system.gyroBias),
+                linearAcceleration = rotationMatrix @ ((state.GetVelocity() - lastState.GetVelocity()) * inverseDeltaT + self.system.accelerometerBias)
             )
 
             lastState = state
@@ -142,6 +143,9 @@ class DataSimulator:
 
     def LoadSamples(self):
 
+        # TODO: VelocityNoise is working as expected, but orientation Noise isn't! WHY NOT!!!
+        # TODO: InjectNoise into sensors!
+
         robotMotionNoise = MotionNoise(
             velocityNoise    = NormalNoise.Zero(),
             orientationNoise = NormalNoise.Zero()
@@ -149,7 +153,7 @@ class DataSimulator:
 
         worldMotionNoise = MotionNoise(
             velocityNoise    = NormalNoise.Zero(),
-            orientationNoise = NormalNoise.Zero(),
+            orientationNoise = NormalNoise.Zero(), #NormalNoise(mean = [0, .01, 0], covariance = np.diag([0, 0, .001]))
         )
 
         self.commandStates      = self.GenerateCommandStates()

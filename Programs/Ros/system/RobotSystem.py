@@ -73,7 +73,6 @@ class RobotSystem:
             # print("GT:    ", sample.groundTruthState)
             # print("")
 
-
             # publish estimate 
             esitmatedState = self.filter.GetState()
             esitmatedState.SetPosition(esitmatedState.GetPosition())
