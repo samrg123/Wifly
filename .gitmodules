@@ -1,0 +1,3 @@
+[submodule "wifly2"]
+	path = wifly2
+	url = https://github.com/wilcohe/wifly2.git
