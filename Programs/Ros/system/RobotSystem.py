@@ -55,7 +55,7 @@ class RobotSystem:
 
     def run_filter(self):
         
-        loopTime = rospy.get_time()
+        loopTime = rospy.get_rostime()
         while True:
             
             sample = self.data_handler.dataSampler.GetSample()
@@ -72,7 +72,7 @@ class RobotSystem:
             # print("CMD:   ", sample.commandState)
             # print("GT:    ", sample.groundTruthState)
             # print("")
-
+ 
             # publish estimate 
             esitmatedState = self.filter.GetState()
             esitmatedState.SetPosition(esitmatedState.GetPosition())
@@ -84,15 +84,26 @@ class RobotSystem:
 
             # publish command state
             self.cmd_pub.publish_command_path(sample.commandState)
- 
 
-            endLoopTime = rospy.get_time()
+            endLoopTime = rospy.get_rostime()
             deltaLoopTime = endLoopTime - loopTime
-            loopTime = endLoopTime
 
-            if deltaLoopTime < sample.deltaT:
+            sampleDuration = rospy.Duration(sample.deltaT)
+
+            sleepThreshold = rospy.Duration(.05)
+            if sampleDuration - deltaLoopTime > sleepThreshold:
                 rospy.sleep(deltaLoopTime)
+            else:
+                while True:
+                    ellapsedTime = rospy.get_rostime() - loopTime
+                    
+                    if ellapsedTime >= sampleDuration:
+                        break
+
+            loopTime = endLoopTime
                  
+
+
     
 def main():
     rob_sys = RobotSystem()
