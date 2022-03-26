@@ -36,11 +36,11 @@ class Esp: public EspClass {
 
             } else {
 
-                // TODO: Calabrate this when we are done 
                 // Note: External voltage divider on ADC scales 0-5V to 
                 //       0-1V ADC range.
-                constexpr float kAdcScale = 5./1024.; 
-                return system_adc_read() * kAdcScale;
+                constexpr float kAdcScale = 5./1024.;
+                constexpr float kAdcCalibration = 4.06/4.1845703125; 
+                return system_adc_read() * (kAdcScale * kAdcCalibration);
             }
         }
 
