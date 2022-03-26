@@ -26,7 +26,6 @@ class Wifly {
         static inline IPAddress kDefaultGateway    = IPAddress(192, 168, 43, 100);
         static inline IPAddress kDefaultSubnetMask = IPAddress(255, 255, 255, 0);
 
-
         static inline constexpr uint16 kServerPort = 1234;
 
         struct SensorData {
@@ -36,7 +35,7 @@ class Wifly {
             sensors_vec_t angularAcceleration;
             float temperature;
             
-            uint16 vccMv;
+            float vcc;
             int8 rssi;
 
             template<typename ValueT>
@@ -51,7 +50,9 @@ class Wifly {
                     String result;
                     
                     S2Stream stream(result);
-                    stream.printf("%.7g", *valuePtr);
+
+                    float value = *valuePtr;
+                    stream.printf("%.7g", value);
                     
                     return result;
 
@@ -85,7 +86,7 @@ class Wifly {
                     {"gyro",  offsetof(SensorData, angularAcceleration), ValueString<decltype(angularAcceleration)>},
                     {"temp",  offsetof(SensorData, temperature),         ValueString<decltype(temperature)>},
                     {"rssi",  offsetof(SensorData, rssi),                ValueString<decltype(rssi)>},
-                    {"vcc",   offsetof(SensorData, vccMv),               ValueString<decltype(vccMv)>}
+                    {"vcc",   offsetof(SensorData, vcc),                 ValueString<decltype(vcc)>}
                 };
 
                 for(const SensorNameLutEntry& lutEntry : kSensorNameLut) {
@@ -118,14 +119,14 @@ class Wifly {
                     "Acceleration.x:%f, Acceleration.y:%f, Acceleration.z:%f, "
                     "Rotation.x:%f, Rotation.y:%f, Rotation.z:%f, "
                     "Temperature(C):%f\n"
-                    "Vcc(mV):%d, "
+                    "Vcc(V):%f, "
                     "RSS:%d ",
 
                     deltaUs,
                     sensorData.linearAcceleration.x, sensorData.linearAcceleration.y, sensorData.linearAcceleration.z,
                     sensorData.angularAcceleration.x, sensorData.angularAcceleration.y, sensorData.angularAcceleration.z,
                     sensorData.temperature,
-                    sensorData.vccMv,
+                    sensorData.vcc,
                     sensorData.rssi
                 );
             }
@@ -139,7 +140,7 @@ class Wifly {
                 display.backBuffer.setCursor(0,0);
 
                 display.backBuffer.setTextColor(display.kColorWhite);
-                display.backBuffer.printf("Vcc: %4.2f\n", .001f * sensorData.vccMv);
+                display.backBuffer.printf("Vcc: %4.2f\n", sensorData.vcc);
 
                 display.backBuffer.setTextColor(display.kColorRed);
                 display.backBuffer.printf("FPS: %5.2f\n", 1000000.f / deltaUs);
@@ -384,32 +385,43 @@ class Wifly {
                 .linearAcceleration = a.acceleration,
                 .angularAcceleration = g.gyro,
                 .temperature = temp.temperature,
-                .vccMv = esp.getVcc(),
+                .vcc = esp.getVcc(),
                 .rssi = wifi.RSSI() 
             };
         }
 
+        // TODO: Once we configure IMU to trigger interrupt when data is ready
+        //       switch from pulling SensorData in Update loop to capturing it here.
+        static IRAM_FUNC void ImuInterrupt(void* wifly_) {
+            Wifly* wifly = static_cast<Wifly*>(wifly_);
+            Serial.println("IMU INTERRUPT CALLED");
+        }
+
         void Init() {
 
-            pinMode(LED_BUILTIN, OUTPUT); // Initialize the LED_BUILTIN pin as an output
-            digitalWrite(LED_BUILTIN, LOW); // Turn the LED on. Note: LED is active low
-            
-            display.Init();
-            delay(10);
-            
-            display.println("Connecting UART\n");
+            // Turn on power LED
+            // Note: LED is active low
+            pinMode(LED_BUILTIN, OUTPUT);
+            digitalWrite(LED_BUILTIN, LOW);
 
+            //Init Display.    
+            display.Init();
+            
+            // Init Serial
+            display.println("Connecting UART\n");
             Serial.begin(kBaudRate);
             while(!Serial) {}
             Serial.println(); // print a new line for first to sperate serial garbage from first output line
 
+            // Print ESP details to serial
             esp.PrintDetails();
 
+            // Init IMU
             display.println("Connecting IMU\n");
             imu.Init(MPU6050_RANGE_2_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_260_HZ);
             
+            // Connect to wifi
             display.printf("Connecting WIFI:\n'%s'\n\n", kSSID);
-
             if (!wifi.config(kDefaultIp, kDefaultGateway, kDefaultSubnetMask)) {
                 Serial.printf(
                     "Failed to configure Wifi for: {\n"
@@ -423,6 +435,15 @@ class Wifly {
                 );
             }
             wifi.Connect(kSSID, kWifiPassword);
+
+            // Install Imu interrupt
+            // Warn: pinmode for D6 has to be set after display.Init()
+            // Note: The display is connected to HSPI and only need to receives data.
+            //       Therefore it only connects to HSPI pins D5, D7, D8 and leaves D6 (MISO) unused
+            //       Rather than wasting the pin we override the pinmode set by display to be a GPIO input.
+            pinMode(D6, INPUT_PULLUP);
+            imu.setInterruptPinPolarity(0); //active high
+            attachInterruptArg(digitalPinToInterrupt(D6), ImuInterrupt, this, FALLING);
 
             //TODO: Implement scrolling text instead of manually having to clear the screen
             display.Clear();

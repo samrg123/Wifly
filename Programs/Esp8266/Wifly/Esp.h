@@ -3,11 +3,15 @@
 #include <Esp.h>
 #include <SoftwareSerial.h>
 
-//Note: Required for ESP.getVCC()
-ADC_MODE(ADC_VCC);
-
 class Esp: public EspClass {
     public:
+
+        enum AdcMode {
+            ADC_3V3 = 33,
+            ADC_VDD = 255, //Note: A0 is disabled in this mode and must be floating
+        };
+
+        static inline constexpr AdcMode kAdcMode = ADC_3V3;
 
         static const char* FlashModeString(FlashMode_t mode) {
             switch(mode) {
@@ -20,12 +24,32 @@ class Esp: public EspClass {
             }
         }
 
+        // Returns the voltage on VDD pin of ESP if kAdcMode == ADC_VDD,
+        // Otherwise the voltage on A0 is returned.  
+        static inline float getVcc() {
+
+            if constexpr(kAdcMode == ADC_VDD) {
+
+                // Note: correction for d1 mini having additional voltage divider attached to A0 (TOUT).
+                constexpr float kVddScale = 3.295 / 2980.; 
+                return system_get_vdd33() * kVddScale;
+
+            } else {
+
+                // TODO: Calabrate this when we are done 
+                // Note: External voltage divider on ADC scales 0-5V to 
+                //       0-1V ADC range.
+                constexpr float kAdcScale = 5./1024.; 
+                return system_adc_read() * kAdcScale;
+            }
+        }
+
         static void PrintDetails() {
 
             Serial.printf(
                 "ESP Status: {\n"
                 "\tChip ID: %d\n"  
-                "\tVCC: %d mV\n"
+                "\tVcc: %f V\n"
                 "\tFree Heap: %d bytes\n"
                 "\tFlash ID: %d\n"   
                 "\tFlash Size: %d bytes\n"
@@ -34,17 +58,17 @@ class Esp: public EspClass {
                 "\tFlash Mode: %s\n"
                 "}\n",
 
-                ESP.getChipId(),
-                ESP.getVcc(),
-                ESP.getFreeHeap(),
-                ESP.getFlashChipId(),
-                ESP.getFlashChipSize(),
-                ESP.getFlashChipRealSize(),
-                ESP.getFlashChipSpeed(),
-                FlashModeString(ESP.getFlashChipMode())
+                Esp::getChipId(),
+                Esp::getVcc(),
+                Esp::getFreeHeap(),
+                Esp::getFlashChipId(),
+                Esp::getFlashChipSize(),
+                Esp::getFlashChipRealSize(),
+                Esp::getFlashChipSpeed(),
+                FlashModeString(Esp::getFlashChipMode())
             );
         }
-
-    
-
 };
+
+// Define function used to configure ESP at startup
+ADC_MODE(Esp::kAdcMode);
