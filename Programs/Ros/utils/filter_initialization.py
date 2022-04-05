@@ -17,6 +17,10 @@ def filter_initialization(sys, initialStateMean, initialStateCov, filter_name):
 
         init.mu = initialStateMean
         init.Sigma = initialStateCov
+
+        init.n = 100
+        init.p = np.zeros((len(initialStateMean), init.n))
+        init.p_w = np.zeros(init.n)
     
         from filter.TestFilter import TestFilter
         filter_ = TestFilter(sys, init)
