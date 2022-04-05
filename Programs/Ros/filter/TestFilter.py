@@ -26,7 +26,7 @@ class TestFilter:
         # self.p = system.p
         self.p_w = w*np.zeros(init.n).reshape(init.n, 1)
         L = np.linalg.cholesky(init.Sigma)
-        self.p = L@np.random.randn(init.Sigma.size()[0], init.n) + init.mu
+        self.p = L@np.random.randn(init.Sigma.size[0], init.n) + init.mu
 
         # init state
         self.state.SetMean(init.mu)
@@ -41,7 +41,7 @@ class TestFilter:
         #       ACCELERATION MODEL AND INTRODUCES DRIFT!
 
         # simply propagate the state and assign identity to covariance
-        for i in self.p.size()[1]: 
+        for i in self.p.size[1]: 
             if self.noisy: 
                 state = self.p[:, i] + self.LQ@np.random.randn(len(self.p[:, 0]), 1)
             else: 
@@ -66,9 +66,9 @@ class TestFilter:
 
         w = np.zeros((self.n, 1))
         
-        for i in self.p.size()[1]: 
+        for i in self.p.size[1]: 
             v = z - intensity_query_client(self.p[:, i])
-            w[i] = multivariate_normal.pdf(v.reshape(-1), np.zeros(len(self.p.size()[0])), self.R)
+            w[i] = multivariate_normal.pdf(v.reshape(-1), np.zeros(len(self.p.size[0])), self.R)
 
         self.p_w = np.multiply(self.p_w, w)
         self.p_w = self.p_w/np.sum(self.p_w)
