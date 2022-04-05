@@ -1,7 +1,13 @@
 import numpy as np
 from scipy.linalg import block_diag
 from copy import deepcopy, copy
-import rospy
+import rospy, rospack
+import sys, os
+# sys.path.append(os.path.join(os.relpath(os.abspath(__file__), '..', '..'), 'wifly2'))
+sys.path.append(rospkg.RosPack().get_path("wifly2"))
+from wifly2.srv import *
+from geometry_msgs.msg import Point
+
 
 from system.RobotState import RobotState
 from utils.utils import *
@@ -62,12 +68,19 @@ class TestFilter:
         except rospy.ServiceException as e: 
             print(f"Exception {e} occurred")
 
+
+    def gen_pt(pos):
+        pt = Point()
+        pt.x = pos[0]
+        pt.y = pos[1]
+        return pt
+
     def correction(self, z):
 
         w = np.zeros((self.n, 1))
         
         for i in self.p.shape[1]: 
-            v = z - intensity_query_client(self.p[:, i])
+            v = z - self.intensity_query_client(gen_pt(self.p[:, i]))
             w[i] = multivariate_normal.pdf(v.reshape(-1), np.zeros(len(self.p.shape[0])), self.R)
 
         self.p_w = np.multiply(self.p_w, w)
