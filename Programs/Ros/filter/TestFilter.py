@@ -26,7 +26,7 @@ class TestFilter:
         # self.p = system.p
         self.p_w = w*np.zeros(init.n).reshape(init.n, 1)
         L = np.linalg.cholesky(init.Sigma)
-        self.p = L@np.random.randn(size(init.Sigma)[0], init.n) + init.mu
+        self.p = L@np.random.randn(init.Sigma.size()[0], init.n) + init.mu
 
         # init state
         self.state.SetMean(init.mu)
