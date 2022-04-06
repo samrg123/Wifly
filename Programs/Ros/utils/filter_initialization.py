@@ -18,6 +18,7 @@ def filter_initialization(sys, initialStateMean, initialStateCov, filter_name):
         init.mu = initialStateMean
         init.Sigma = initialStateCov
 
+        # TODO: set this in yaml file ... might need to move out to RobotSystem.py
         init.n = 100
         init.p = np.zeros((len(initialStateMean), init.n))
         init.p_w = np.zeros(init.n)

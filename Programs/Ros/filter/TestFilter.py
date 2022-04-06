@@ -47,9 +47,6 @@ class TestFilter:
         state = self.state
         covariance = self.state.GetCovariance()
 
-        # TODO: WE NEED TO SWITCH TO PROPER SE(3) OTHERWISE FORCE OF GRAVITY MESSES UP 
-        #       ACCELERATION MODEL AND INTRODUCES DRIFT!
-
         # simply propagate the state and assign identity to covariance
         for i in range(len(self.p)): 
             state = self.p[i]

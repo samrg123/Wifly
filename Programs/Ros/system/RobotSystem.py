@@ -44,7 +44,9 @@ class RobotSystem:
             velocity    = init_state_vals[3:6],
             position    = init_state_vals[6:9]
         )
-        init_state_cov = np.diag(params['initial_state_variance'])**2        
+        init_state_cov = np.diag(params['initial_state_variance'])
+        print("init_state_cov", init_state_cov)
+
         init_state.SetCovariance(init_state_cov)
 
         filter_name = params['filter_name']
@@ -70,9 +72,9 @@ class RobotSystem:
             # print("ACCEL: ", sample.sensorValue)
 
             # update model
-            print(sample.groundTruthState.GetPosition())
+            # print(sample.groundTruthState.GetPosition())
             self.filter.prediction(sample.sensorValue, sample.deltaT)
-            self.filter.correction(intensity_query_client(gen_pt(sample.groundTruthState.GetPosition())).intensity)
+            # self.filter.correction(intensity_query_client(gen_pt(sample.groundTruthState.GetPosition())).intensity)
             
             # print("N_PRED:", self.filter.GetState())
             # print("CMD:   ", sample.commandState)
