@@ -7,6 +7,7 @@ import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.join(os.path.abspath(__file__), '..', '..', '..', 'wifly2'))))
 # sys.path.append(rospkg.RosPack().get_path("wifly2"))
 from scripts.intensity_client_test import gen_pt, intensity_query_client
+from scipy.stats import multivariate_normal
 
 
 from system.RobotState import RobotState
