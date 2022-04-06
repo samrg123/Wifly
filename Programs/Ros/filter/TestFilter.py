@@ -83,7 +83,11 @@ class TestFilter:
         w = np.zeros((self.n, 1))
         for i in range(len(self.p)):
             pos = self.p[i].GetPosition()
-            v = z - intensity_query_client(gen_pt(pos)).intensity
+            wifi = intensity_query_client(gen_pt(pos))
+            if (wifi.x == -1 and wifi.y == -1): 
+                w[i] = 0
+                continue
+            v = z - wifi.intensity
             w[i] = multivariate_normal.pdf(v.reshape(-1), 0, self.R)
 
         self.p_w = np.multiply(self.p_w, w)
