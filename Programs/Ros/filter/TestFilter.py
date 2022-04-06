@@ -36,7 +36,7 @@ class TestFilter:
         self.p = []
         for i in range(init.n): 
             #hardcoding for now...
-            self.p.append(RobotState(position=(L@np.random.randn(3, 1) + np.zeros((3, 1))))) ##init.mu)))
+            self.p.append(RobotState(position=(L@np.random.randn(3, 1) + np.zeros((3, 1))).reshape(-1))) ##init.mu)))
 
         # init state
         self.state.SetMean(init.mu)
