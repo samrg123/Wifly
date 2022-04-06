@@ -13,7 +13,7 @@ class system_initialization:
         self.velocityBias      = GetParam(params, "velocityBias", np.zeros(3))
         self.accelerometerBias = GetParam(params, "acclerometerBias", np.array([0, 0, gForceOfGravity]))
 
-        self.Q = 0.1*np.eye(9)
+        self.Q = 0.1*np.eye(3)
         self.R = 3
         self.noisy = False
 

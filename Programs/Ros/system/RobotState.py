@@ -4,6 +4,7 @@ import rospy
 import yaml
 from utils.utils import *
 
+
 class RobotState:
     '''
     Robot State:

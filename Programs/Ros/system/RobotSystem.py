@@ -13,6 +13,10 @@ from utils.filter_initialization import filter_initialization
 from utils.system_initialization import system_initialization
 from utils.utils import *
 
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.join(os.path.abspath(__file__), '..', '..', '..', 'wifly2'))))
+from scripts.intensity_client_test import gen_pt, intensity_query_client
+
 from system.SensorValue import SensorValue
 
 class RobotSystem:
@@ -67,6 +71,7 @@ class RobotSystem:
 
             # update model
             self.filter.prediction(sample.sensorValue, sample.deltaT)
+            self.filter.correction(intensity_query_client(gen_pt(sample.GetPosition())))
             
             # print("N_PRED:", self.filter.GetState())
             # print("CMD:   ", sample.commandState)
