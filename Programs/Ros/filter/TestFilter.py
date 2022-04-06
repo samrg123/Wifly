@@ -3,8 +3,8 @@ from scipy.linalg import block_diag
 from copy import deepcopy, copy
 import rospy, rospack
 import sys, os
-# sys.path.append(os.path.join(os.relpath(os.abspath(__file__), '..', '..'), 'wifly2'))
-sys.path.append(rospkg.RosPack().get_path("wifly2"))
+sys.path.append(os.path.join(os.relpath(os.abspath(__file__), '..', '..'), 'wifly2'))
+# sys.path.append(rospkg.RosPack().get_path("wifly2"))
 from wifly2.srv import *
 from geometry_msgs.msg import Point
 
