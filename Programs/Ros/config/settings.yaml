@@ -20,7 +20,7 @@ alphas_sqrt: [
 initial_state_vals: [
   0, 0,  0, # orientation
   0, 0,  0, # velocity
-  0, 0,  0  # position 
+  10, 5,  0  # position 
 ]
 
 # Note: in sqrt values
