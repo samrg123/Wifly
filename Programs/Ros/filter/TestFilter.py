@@ -6,8 +6,7 @@ import rospy
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.join(os.path.abspath(__file__), '..', '..', '..', 'wifly2'))))
 # sys.path.append(rospkg.RosPack().get_path("wifly2"))
-from wifly2.srv import *
-from geometry_msgs.msg import Point
+from scripts.intensity_client_test import gen_pt, intensity_query_client
 
 
 from system.RobotState import RobotState
@@ -61,22 +60,22 @@ class TestFilter:
         # self.state.SetMean(predictedState.GetMean())
         self.state.SetCovariance(predictedCovariance)
 
-    def intensity_query_client(pos): 
-        rospy.wait_for_service("intensity")
-        try: 
-            intensity_serv = rospy.ServiceProxy("intensity", intensity)
-            intensity_val = intensity_serv(pos)
-            print(intensity_val)
-            return intensity_val
-        except rospy.ServiceException as e: 
-            print(f"Exception {e} occurred")
+    # def intensity_query_client(pos): 
+    #     rospy.wait_for_service("intensity")
+    #     try: 
+    #         intensity_serv = rospy.ServiceProxy("intensity", intensity)
+    #         intensity_val = intensity_serv(pos)
+    #         print(intensity_val)
+    #         return intensity_val
+    #     except rospy.ServiceException as e: 
+    #         print(f"Exception {e} occurred")
 
 
-    def gen_pt(pos):
-        pt = Point()
-        pt.x = pos[0]
-        pt.y = pos[1]
-        return pt
+    # def gen_pt(pos):
+    #     pt = Point()
+    #     pt.x = pos[0]
+    #     pt.y = pos[1]
+    #     return pt
 
     def correction(self, z):
 

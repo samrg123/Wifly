@@ -15,7 +15,6 @@ from utils.utils import *
 
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.join(os.path.abspath(__file__), '..', '..', '..', '..', 'wifly2'))))
-print(sys.path)
 from scripts.intensity_client_test import gen_pt, intensity_query_client
 
 from system.SensorValue import SensorValue
