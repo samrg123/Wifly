@@ -71,7 +71,7 @@ class RobotSystem:
 
             # update model
             self.filter.prediction(sample.sensorValue, sample.deltaT)
-            self.filter.correction(intensity_query_client(gen_pt(sample.groundTruthState.GetPosition())))
+            self.filter.correction(intensity_query_client(gen_pt(sample.groundTruthState.GetPosition())).intensity)
             
             # print("N_PRED:", self.filter.GetState())
             # print("CMD:   ", sample.commandState)
