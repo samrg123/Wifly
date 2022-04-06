@@ -26,7 +26,9 @@ class TestFilter:
         # self.p = system.p
         self.p_w = w*np.zeros(init.n).reshape(init.n, 1)
         L = np.linalg.cholesky(init.Sigma)
-        self.p = L@np.random.randn(init.Sigma.shape[0], init.n) + init.mu
+        self.p = []
+        for i in range(init.n): 
+            self.p.append(RobotState(positions=(L@np.random.randn(init.Sigma.shape[0], 1) + init.mu)))
 
         # init state
         self.state.SetMean(init.mu)
@@ -43,10 +45,10 @@ class TestFilter:
         # simply propagate the state and assign identity to covariance
         for i in self.p.shape[1]: 
             if self.noisy: 
-                state = self.p[:, i] + self.LQ@np.random.randn(len(self.p[:, 0]), 1)
+                state = self.p[i] + self.LQ@np.random.randn(len(self.p[:, 0]), 1)
             else: 
-                state = self.p[:, i]
-            self.p[:, i] = self.motionFunction(state, sensorValue, deltaT)
+                state = self.p[i]
+            self.p[i] = self.motionFunction(state, sensorValue, deltaT)
         predictedCovariance = covariance
 
         self.state.SetMean(np.mean(self.p))
@@ -66,8 +68,9 @@ class TestFilter:
 
         w = np.zeros((self.n, 1))
         
-        for i in self.p.shape[1]: 
-            v = z - intensity_query_client(self.p[:, i])
+        for i in self.p.shape[1]:
+            pos = self.p[i].GetPosition()
+            v = z - intensity_query_client(pos)
             w[i] = multivariate_normal.pdf(v.reshape(-1), np.zeros(len(self.p.shape[0])), self.R)
 
         self.p_w = np.multiply(self.p_w, w)
