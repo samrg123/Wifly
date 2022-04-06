@@ -15,7 +15,7 @@ from utils.utils import *
 
 class TestFilter:
 
-    def __init__(self, system, init):
+    def __init__(self, system, init, params):
 
         #   system: system and noise models
         #   init:   initial state mean and covariance
@@ -28,13 +28,14 @@ class TestFilter:
         self.R = system.R # Wifi Noise
         self.noisy = system.noisy # Flag to determine if noise is added
 
-        self.n = init.n
+        self.n = GetParam(params, "numParticles", 10)
+
         w = 1/self.n
         # self.p = system.p
-        self.p_w = w*np.zeros(init.n).reshape(init.n, 1)
+        self.p_w = w*np.zeros(self.n).reshape(self.n, 1)
         L = np.linalg.cholesky(init.Sigma)[0:3, 0:3]
         self.p = []
-        for i in range(init.n): 
+        for i in range(self.n): 
             #hardcoding for now...
             self.p.append(RobotState(position=((L@np.random.randn(3, 1) + np.zeros((3, 1))).reshape(-1) + init.mu[0:3, 4])))
 

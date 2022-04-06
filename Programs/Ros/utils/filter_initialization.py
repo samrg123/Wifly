@@ -11,20 +11,15 @@ class myStruct:
 
 init = myStruct()
 
-def filter_initialization(sys, initialStateMean, initialStateCov, filter_name):
+def filter_initialization(sys, initialStateMean, initialStateCov, filter_name, params):
 
     if filter_name == "TestFilter":
 
         init.mu = initialStateMean
         init.Sigma = initialStateCov
-
-        # TODO: set this in yaml file ... might need to move out to RobotSystem.py
-        init.n = 100
-        init.p = np.zeros((len(initialStateMean), init.n))
-        init.p_w = np.zeros(init.n)
     
         from filter.TestFilter import TestFilter
-        filter_ = TestFilter(sys, init)
+        filter_ = TestFilter(sys, init, params)
     else:
 
         Panic(f"Unsupported filter {filter_name}")

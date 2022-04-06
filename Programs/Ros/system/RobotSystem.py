@@ -50,7 +50,7 @@ class RobotSystem:
         init_state.SetCovariance(init_state_cov)
 
         filter_name = params['filter_name']
-        self.filter = filter_initialization(self.system, init_state.GetMean(), init_state_cov, filter_name)
+        self.filter = filter_initialization(self.system, init_state.GetMean(), init_state_cov, filter_name, params)
 
         # load data
         self.data_handler = DataHandler(self.system)

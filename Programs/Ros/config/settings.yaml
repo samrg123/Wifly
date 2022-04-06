@@ -11,6 +11,7 @@ numStates: 4
 
 ### Robot System ###
 filter_name: "TestFilter" 
+numParticles: 1
 
 alphas_sqrt: [
   0,  0,  0, 
