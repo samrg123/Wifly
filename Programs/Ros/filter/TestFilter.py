@@ -51,7 +51,7 @@ class TestFilter:
         #       ACCELERATION MODEL AND INTRODUCES DRIFT!
 
         # simply propagate the state and assign identity to covariance
-        for i in self.p.shape[1]: 
+        for i in range(len(self.p)): 
             state = self.p[i]
             self.p[i] = self.motionFunction(state, sensorValue, deltaT)
         predictedCovariance = covariance
@@ -80,7 +80,7 @@ class TestFilter:
     def correction(self, z):
 
         w = np.zeros((self.n, 1))
-        for i in self.p.shape[1]:
+        for i in range(len(self.p)):
             pos = self.p[i].GetPosition()
             v = z - intensity_query_client(pos)
             w[i] = multivariate_normal.pdf(v.reshape(-1), np.zeros(len(self.p.shape[0])), self.R)
@@ -97,7 +97,7 @@ class TestFilter:
             u = r + (i-1)/self.n
             while u > W[j]: 
                 j = j + 1
-            self.p[:, i] = self.p[:, j]
+            self.p[i] = self.p[j]
             self.p_w[i] = 1 / self.n
 
 
