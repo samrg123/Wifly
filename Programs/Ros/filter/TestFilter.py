@@ -82,7 +82,7 @@ class TestFilter:
         w = np.zeros((self.n, 1))
         for i in range(len(self.p)):
             pos = self.p[i].GetPosition()
-            v = z - intensity_query_client(pos)
+            v = z - intensity_query_client(gen_pt(pos))
             w[i] = multivariate_normal.pdf(v.reshape(-1), np.zeros(len(self.p.shape[0])), self.R)
 
         self.p_w = np.multiply(self.p_w, w)
