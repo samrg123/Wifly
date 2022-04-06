@@ -35,7 +35,8 @@ class TestFilter:
         L = np.linalg.cholesky(init.Sigma)
         self.p = []
         for i in range(init.n): 
-            self.p.append(RobotState(positions=(L@np.random.randn(init.Sigma.shape[0], 1) + init.mu)))
+            #hardcoding for now...
+            self.p.append(RobotState(positions=(L@np.random.randn(3, 1) + np.zeros((3, 1))))) ##init.mu)))
 
         # init state
         self.state.SetMean(init.mu)
