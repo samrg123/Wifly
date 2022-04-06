@@ -66,6 +66,7 @@ class TestFilter:
         try: 
             intensity_serv = rospy.ServiceProxy("intensity", intensity)
             intensity_val = intensity_serv(pos)
+            print(intensity_val)
             return intensity_val
         except rospy.ServiceException as e: 
             print(f"Exception {e} occurred")
