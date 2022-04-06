@@ -88,7 +88,7 @@ class TestFilter:
                 w[i] = 0
                 continue
             v = z - wifi.intensity
-            w[i] = multivariate_normal.pdf(v.reshape(-1), 0, self.R)
+            w[i] = multivariate_normal.pdf(v, 0, self.R)
 
         self.p_w = np.multiply(self.p_w, w)
         self.p_w = self.p_w/np.sum(self.p_w)
