@@ -70,6 +70,7 @@ class RobotSystem:
             # print("ACCEL: ", sample.sensorValue)
 
             # update model
+            print(sample.groundTruthState.GetPosition())
             self.filter.prediction(sample.sensorValue, sample.deltaT)
             self.filter.correction(intensity_query_client(gen_pt(sample.groundTruthState.GetPosition())).intensity)
             
