@@ -32,7 +32,7 @@ class TestFilter:
         w = 1/self.n
         # self.p = system.p
         self.p_w = w*np.zeros(init.n).reshape(init.n, 1)
-        L = np.linalg.cholesky(init.Sigma)
+        L = np.linalg.cholesky(init.Sigma)[0:3, 0:3]
         self.p = []
         for i in range(init.n): 
             #hardcoding for now...
