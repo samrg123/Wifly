@@ -92,7 +92,7 @@ class TestFilter:
 
         self.p_w = np.multiply(self.p_w, w)
         self.p_w = self.p_w/np.sum(self.p_w)
-        self.Neff = 1/np.sum(np.power(self.p_w), 2)
+        self.Neff = 1/np.sum(np.power(self.p_w, 2))
 
     def resampling(self): 
         W = np.cumsum(self.p_w)
