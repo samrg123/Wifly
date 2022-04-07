@@ -19,7 +19,7 @@ class TestFilter:
 
         #   system: system and noise models
         #   init:   initial state mean and covariance
-        self.motionFunction = system.MotionFunction
+        self.motionFunction = system.GammaMotionFunction
 
         self.state = RobotState()
 
@@ -57,6 +57,8 @@ class TestFilter:
         # TODO: Update the mean values
         # self.state.SetMean(np.mean(self.p))
         # self.state.SetMean(predictedState.GetMean())
+
+        self.state = self.motionFunction(self.state, sensorValue, deltaT)
         self.state.SetCovariance(predictedCovariance)
 
     # def intensity_query_client(pos): 

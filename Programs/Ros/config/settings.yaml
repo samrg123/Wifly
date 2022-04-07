@@ -5,9 +5,9 @@ deltaT: 0.1
 numSamples: 100
 numStates: 4
 
-# dataType: "log"
-# dataSensorValueLog: "../sampleData.log"
-# computeBiasSamples: 5
+dataType: "log"
+dataSensorValueLog: "../sampleData1.log"
+computeBiasSamples: 5
 
 ### Robot System ###
 filter_name: "TestFilter" 
@@ -21,7 +21,7 @@ alphas_sqrt: [
 initial_state_vals: [
   0, 0,  0, # orientation
   0, 0,  0, # velocity
-  10, 5,  0  # position 
+  0, 0,  0  # position 
 ]
 
 # Note: in sqrt values

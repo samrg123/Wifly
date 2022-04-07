@@ -12,56 +12,75 @@ class system_initialization:
         self.gyroBias          = GetParam(params, "gyroBias",     np.zeros(3))
         self.velocityBias      = GetParam(params, "velocityBias", np.zeros(3))
         self.accelerometerBias = GetParam(params, "acclerometerBias", np.array([0, 0, gForceOfGravity]))
+        # self.accelerometerBias = GetParam(params, "acclerometerBias", np.zeros(3))
 
         self.Q = 0.1*np.eye(3)
         self.R = 3
         self.noisy = False
 
-    def MotionFunction(self, state, sensorValue, deltaT):
+    # Note: Really fast, but position update lags behind yielding poor results with real-world data 
+    def StepWiseMotionFunction(self, state, sensorValue, deltaT):
 
-        position           = state.GetPosition()
-        linearVelocity     = state.GetVelocity()
-        rotationMatrix     = state.GetRotationMatrix()
+        position       = state.GetPosition()
+        linearVelocity = state.GetVelocity()
+        rotationMatrix = state.GetRotationMatrix()
+
         angularVelocity    = sensorValue.GetAngularVelocity()
         linearAcceleration = sensorValue.GetLinearAcceleration()
 
-        # Mani Gamma functions - TODO: Figure out why these are different than expm. Are we interpretting Mani's notes wrong?
-        # Gamma1 = system_initialization.Gamma1
-        # Gamma2 = system_initialization.Gamma2
-        # # deltaVelocity  = rotationMatrix @ Gamma1(biasCorrectedAngularVelocity * deltaT) @ biasCorrectedLinearAcceleration * deltaT
-        # # deltaPosition  = linearVelocity * deltaT + rotationMatrix @ Gamma2(biasCorrectedAngularVelocity * deltaT) @ biasCorrectedLinearAcceleration * deltaT*deltaT
-        
-        # # EXPM integration of velocity and position by hand
-        # # See: https://arxiv.org/pdf/2102.12897.pdf for reference
-        # biasCorrectedAngularVelocity = angularVelocity - rotationMatrix @ self.gyroBias
-        # biasCorrectedLinearAcceleration = linearAcceleration - rotationMatrix @ self.accelerometerBias
-        # deltaVelocity  = rotationMatrix @ (np.linalg.norm(biasCorrectedAngularVelocity) * biasCorrectedLinearAcceleration * deltaT)
-        # deltaPosition  = rotationMatrix @ (np.linalg.norm(biasCorrectedAngularVelocity) * linearVelocity * deltaT * deltaT)
-        # r = RobotState(
-        #     position = position + deltaPosition,
-        #     velocity = linearVelocity + deltaVelocity
-        # )
-        # r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3(biasCorrectedAngularVelocity * deltaT) ) )
+        r = RobotState(
+            velocity    = linearVelocity + (rotationMatrix.T @ linearAcceleration - self.accelerometerBias) * deltaT,
+            position    = position       + (linearVelocity - self.velocityBias) * deltaT
+        )
+        r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3( (angularVelocity - rotationMatrix @ self.gyroBias) * deltaT) ))
 
-        # EXPM integration - Most accurate for real world data 
-        r = RobotState()
+        return r
+
+    # Note: Moderatly fast, uses first order taylor series. Correctly integarates velocity, but position integration slightly off    
+    def ExpmMotionFunction(self, state, sensorValue, deltaT):
+
+        linearVelocity = state.GetVelocity()
+        rotationMatrix = state.GetRotationMatrix()
+
+        angularVelocity    = sensorValue.GetAngularVelocity()
+        linearAcceleration = sensorValue.GetLinearAcceleration()
+
         derivative = np.hstack((
             angularVelocity     - rotationMatrix @ self.gyroBias,
             linearAcceleration  - rotationMatrix @ self.accelerometerBias,
             linearVelocity      - rotationMatrix @ self.velocityBias 
         ))
-        r.SetMean(state.GetMean() @ expm( RobotState.Wedge(derivative * deltaT) ))
 
-        # # Step-wise Integration . Note: position update lags behind yielding poor results with real-world data
-        # linearVelocity = state.GetVelocity()
-        # r = RobotState(
-        #     velocity    = linearVelocity + (rotationMatrix.T @ linearAcceleration - self.accelerometerBias) * deltaT,
-        #     position    = position       + (linearVelocity - self.velocityBias) * deltaT
-        # )
-        # r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3( (angularVelocity - rotationMatrix @ self.gyroBias) * deltaT) ))
+        return RobotState.FromMean(state.GetMean() @ expm( RobotState.Wedge(derivative * deltaT) ))
+
+    # Note: Slowest, but uses second order taylor series. Correct integration for both position and velocity
+    def GammaMotionFunction(self, state, sensorValue, deltaT):
+
+        position       = state.GetPosition()
+        linearVelocity = state.GetVelocity()
+        rotationMatrix = state.GetRotationMatrix()
+
+        angularVelocity    = sensorValue.GetAngularVelocity()
+        linearAcceleration = sensorValue.GetLinearAcceleration()        
+
+        deltaOrientation    = deltaT * (angularVelocity - rotationMatrix @ self.gyroBias)
+        deltaLinearVelocity = deltaT * (linearAcceleration - rotationMatrix @ self.accelerometerBias)
+
+        # biasCorrectedAngularVelocity    = angularVelocity - rotationMatrix @ self.gyroBias
+        # biasCorrectedLinearAcceleration = linearAcceleration - rotationMatrix @ self.accelerometerBias
+        
+        deltaVelocity = rotationMatrix @ self.Gamma1(deltaOrientation) @ deltaLinearVelocity
+        deltaPosition = rotationMatrix @ linearVelocity * deltaT + \
+                        rotationMatrix @ self.Gamma2(deltaOrientation) @ deltaLinearVelocity*deltaT
+
+        r = RobotState(
+            position = position + deltaPosition,
+            velocity = linearVelocity + deltaVelocity
+        )
+        r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3(deltaOrientation) ))
 
         return r
-
+    
     @staticmethod
     def Gamma1(omega):
         omegaNorm = np.linalg.norm(omega)

@@ -6,10 +6,7 @@ from utils.utils import *
 
 
 class RobotState:
-    '''
-    Robot State:
-    2D: X = [x, y, theta, vx, vy]; position = [x, y]; orientation = [theta]; velocity = [vx, vy]
-    '''
+
     def __init__(self, 
                  position = np.zeros(3), orientation = np.zeros(3), velocity = np.zeros(3),
                  positionCovariance = np.zeros(3), orientationCovariance = np.zeros(3), velocityCovariance = np.zeros(3)):
@@ -46,11 +43,11 @@ class RobotState:
         return r
 
     @staticmethod
-    def WedgeSO3(theta):
+    def WedgeSO3(dTheta):
         return np.array([
-            [ 0,         -theta[2],  theta[1]],
-            [ theta[2],  0,         -theta[0]],
-            [-theta[1],  theta[0],   0       ] 
+            [ 0,         -dTheta[2],  dTheta[1]],
+            [ dTheta[2],  0,         -dTheta[0]],
+            [-dTheta[1],  dTheta[0],   0       ] 
         ])
 
     @staticmethod
@@ -66,7 +63,15 @@ class RobotState:
             [-dTheta[1],  dTheta[0],  0,         dVelocity[2], dPosition[2]],
             [ 0,          0,          0,         0,            0           ],
             [ 0,          0,          0,         0,            0           ]
-        ])    
+        ])
+
+    @staticmethod
+    def Vee(se2):
+        dTheta    = [se2[2,1], se2[0,2], se2[1,0]]
+        dVelocity = se2[0:3,3]
+        dPosition = se2[0:3,4]
+
+        return np.hstack((dTheta, dVelocity, dPosition))
 
     def __str__(self):
         return f"RobotState {{ position: {self._position}, orientation: {self.GetOrientation()}, velocity: {self._velocity} }}"
