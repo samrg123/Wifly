@@ -19,32 +19,47 @@ class system_initialization:
 
     def MotionFunction(self, state, sensorValue, deltaT):
 
-        # # Mani Gamma functions
-        # rotationMatrix     = state.GetRotationMatrix()
-        # angularVelocity    = sensorValue.GetAngularVelocity()
-        # linearAcceleration = sensorValue.GetLinearAcceleration()
-
-        # Gamma1 = system_initialization.Gamma1
-        # Gamma2 = system_initialization.Gamma2
-        # deltaVelocity  = (rotationMatrix @ Gamma1(angularVelocity * deltaT) @ linearAcceleration - gAccelerometerBias.T) * deltaT
-        # deltaPosition  = state.GetVelocity() * deltaT + rotationMatrix @ Gamma2(angularVelocity * deltaT) @ (linearAcceleration  - .5*gGravity.reshape(-1)) * deltaT*deltaT
-        # r = RobotState(
-        #     velocity = state.GetVelocity() + deltaVelocity,
-        #     position = state.GetPosition() + deltaPosition
-        # )
-        # r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3(angularVelocity * deltaT) ) )
-
-        # Normal Integration
+        position           = state.GetPosition()
+        linearVelocity     = state.GetVelocity()
         rotationMatrix     = state.GetRotationMatrix()
         angularVelocity    = sensorValue.GetAngularVelocity()
         linearAcceleration = sensorValue.GetLinearAcceleration()
+
+        # Mani Gamma functions - TODO: Figure out why these are different than expm. Are we interpretting Mani's notes wrong?
+        # Gamma1 = system_initialization.Gamma1
+        # Gamma2 = system_initialization.Gamma2
+        # # deltaVelocity  = rotationMatrix @ Gamma1(biasCorrectedAngularVelocity * deltaT) @ biasCorrectedLinearAcceleration * deltaT
+        # # deltaPosition  = linearVelocity * deltaT + rotationMatrix @ Gamma2(biasCorrectedAngularVelocity * deltaT) @ biasCorrectedLinearAcceleration * deltaT*deltaT
         
-        r = RobotState(
-            velocity    = state.GetVelocity() + (rotationMatrix.T @ linearAcceleration - self.accelerometerBias) * deltaT,
-            position    = state.GetPosition() + (state.GetVelocity() - self.velocityBias) * deltaT
-        )
-        r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3( (angularVelocity - self.gyroBias) * deltaT) ))
-        
+        # # EXPM integration of velocity and position by hand
+        # # See: https://arxiv.org/pdf/2102.12897.pdf for reference
+        # biasCorrectedAngularVelocity = angularVelocity - rotationMatrix @ self.gyroBias
+        # biasCorrectedLinearAcceleration = linearAcceleration - rotationMatrix @ self.accelerometerBias
+        # deltaVelocity  = rotationMatrix @ (np.linalg.norm(biasCorrectedAngularVelocity) * biasCorrectedLinearAcceleration * deltaT)
+        # deltaPosition  = rotationMatrix @ (np.linalg.norm(biasCorrectedAngularVelocity) * linearVelocity * deltaT * deltaT)
+        # r = RobotState(
+        #     position = position + deltaPosition,
+        #     velocity = linearVelocity + deltaVelocity
+        # )
+        # r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3(biasCorrectedAngularVelocity * deltaT) ) )
+
+        # EXPM integration - Most accurate for real world data 
+        r = RobotState()
+        derivative = np.hstack((
+            angularVelocity     - rotationMatrix @ self.gyroBias,
+            linearAcceleration  - rotationMatrix @ self.accelerometerBias,
+            linearVelocity      - rotationMatrix @ self.velocityBias 
+        ))
+        r.SetMean(state.GetMean() @ expm( RobotState.Wedge(derivative * deltaT) ))
+
+        # # Step-wise Integration . Note: position update lags behind yielding poor results with real-world data
+        # linearVelocity = state.GetVelocity()
+        # r = RobotState(
+        #     velocity    = linearVelocity + (rotationMatrix.T @ linearAcceleration - self.accelerometerBias) * deltaT,
+        #     position    = position       + (linearVelocity - self.velocityBias) * deltaT
+        # )
+        # r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3( (angularVelocity - rotationMatrix @ self.gyroBias) * deltaT) ))
+
         return r
 
     @staticmethod
@@ -58,8 +73,8 @@ class system_initialization:
         omegaWedge = RobotState.WedgeSO3(omega)
 
         return np.eye(3) + \
-            (1 - np.cos(omegaNorm))/omegaNormSquared * omegaWedge + \
-            (omegaNorm - np.sin(omegaNorm))/(omegaNormSquared * omegaNorm) * omegaWedge @ omegaWedge
+            ((1 - np.cos(omegaNorm))/omegaNormSquared) * omegaWedge + \
+            ((omegaNorm - np.sin(omegaNorm))/(omegaNormSquared * omegaNorm)) * omegaWedge @ omegaWedge
 
     @staticmethod
     def Gamma2(omega):
@@ -74,6 +89,6 @@ class system_initialization:
         omegaWedge = RobotState.WedgeSO3(omega)
 
         return halfI + \
-            (omegaNorm - np.sin(omegaNorm))/(omegaNormSquared * omegaNorm) * omegaWedge + \
-            (omegaNormSquared + 2*np.cos(omegaNorm) - 2)/(2*omegaNormSquared * omegaNormSquared) * omegaWedge @ omegaWedge        
+            ((omegaNorm - np.sin(omegaNorm))/(omegaNormSquared * omegaNorm)) * omegaWedge + \
+            ((omegaNormSquared + 2*np.cos(omegaNorm) - 2)/(2*omegaNormSquared * omegaNormSquared)) * omegaWedge @ omegaWedge        
 
