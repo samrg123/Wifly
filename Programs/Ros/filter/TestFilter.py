@@ -84,7 +84,8 @@ class TestFilter:
         for i in range(len(self.p)):
             pos = self.p[i].GetPosition()
             wifi = intensity_query_client(gen_pt(pos))
-            if (wifi.x == -1 and wifi.y == -1): 
+            print(wifi)
+            if (wifi.x == -1 and wifi.y == -1) or wifi.occupied: 
                 w[i] = 0
                 continue
             v = z - wifi.intensity

@@ -44,6 +44,8 @@ class DataSimulator:
         self.velocityNorm = GetParam(params, "velocityNorm", 10)        
         self.stateTransitionWidth = GetParam(params, "stateTransitionWidth", .1)
 
+        self.initialPos = GetParam(params, "initial_state_vals", np.zeros(9))[6:9]
+
 
     def Reset(self):
         self.sampleIndex = 0
@@ -52,7 +54,7 @@ class DataSimulator:
 
         commandStates = np.empty(self.numSamples, dtype="object")
         
-        lastRobotState = RobotState()
+        lastRobotState = RobotState(position=self.initialPos)
         commandStates[0] = lastRobotState
 
         numStates = self.numStates
@@ -84,8 +86,8 @@ class DataSimulator:
 
         noisyStates = np.empty(len(commandStates), dtype="object")
 
-        lastNoiseyState = RobotState()
-        lastCommandSate = RobotState()
+        lastNoiseyState = RobotState(position=self.initialPos)
+        lastCommandSate = RobotState(position=self.initialPos)
         
         for i, commandState in enumerate(commandStates):
 
