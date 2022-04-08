@@ -109,6 +109,8 @@ class Wifly {
         Display display;
         SensorData currentSensorData = {};
 
+        bool streamData = false;
+
         using SensorStreamCallback = void(*)(Wifly& wifly, const SensorData& sensorData, uint64 deltaUs);                
         struct SensorStream: ChainedCallback<SensorStreamCallback> {
 
@@ -271,6 +273,7 @@ class Wifly {
                     .detailedHelp = "Supported Streams: {\n"
                                     "\tdisplay - Controls updates to the screen\n"
                                     "\tserial  - Controls updates to the serial port\n"
+                                    "\twifi    - Controls updates to connected wifi clients\n"
                                     "}",
                     
                     .args = (ExtendedCommand::Arg[]) {
@@ -291,13 +294,36 @@ class Wifly {
                         Wifly& wifly = Server(command).wifly;
                         
                         const char* streamName = command.args[0];
+
+                        enum State { OFF, ON, INVALID };
+
+                        // TODO: cleanup - Hack to turn on wifi broadcast ... should really only be for connected client
+                        if(String("wifi") == streamName) {
+                            const char* stateStr = command.args[1];
+                            State state = !strcmp(stateStr, "on") ? ON : !strcmp(stateStr, "off") ? OFF : INVALID;
+
+                            if(state == INVALID) {
+                                client.printf("Invalid state: '%s'\n", stateStr);
+                                return;
+                            }
+
+                            if(wifly.streamData == state) {
+                                client.printf("Sensor stream is already %s\n", stateStr);
+                                return;
+                            }                                         
+                            
+                            wifly.streamData = state;
+                            return;
+                        }
+
+
                         SensorStreamCallback callback = wifly.sensorStream.GetCallback(streamName);
                         if(!callback) {
                             client.printf("Invalid stream: '%s'\n", streamName);
                             return;
                         }
 
-                        enum State { OFF, ON, INVALID };
+
 
                         const char* stateStr = command.args[1];
                         State state = !strcmp(stateStr, "on") ? ON : !strcmp(stateStr, "off") ? OFF : INVALID;
@@ -418,7 +444,8 @@ class Wifly {
 
             // Init IMU
             display.println("Connecting IMU\n");
-            imu.Init(MPU6050_RANGE_2_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_260_HZ);
+            // imu.Init(MPU6050_RANGE_2_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_260_HZ);
+            imu.Init(MPU6050_RANGE_4_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_5_HZ);
             
             // Connect to wifi
             display.printf("Connecting WIFI:\n'%s'\n\n", kSSID);
@@ -468,6 +495,25 @@ class Wifly {
             commandServer.Update();
 
             SensorData sensorData = ReadSensors();
+
+            // TODO: clean this up. Hack to stream data back to laptop
+            if(streamData) {
+
+                constexpr char* values[] = {
+                    "time",
+                    "accel",
+                    "gyro",
+                    "rssi",          
+                };
+
+                String sensorValueString;
+                for(const char* value : values) {
+                    sensorValueString = sensorValueString + value + ": " + sensorData.SensorValueString(value) + '\n';
+                }
+                sensorValueString+= '\n';
+
+                commandServer.Broadcast(sensorValueString.c_str(), sensorValueString.length());
+            }
 
             sensorStream(*this, sensorData, sensorData.timestampUs - currentSensorData.timestampUs);
 

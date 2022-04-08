@@ -101,6 +101,14 @@ class WifiServer: public WiFiServer {
             PrintStatus();
         }
 
+        void Broadcast(const char* data, size_t bytes) {
+            for(Connection& connection : connections) {
+                if(connection.client) {
+                    connection.client.write(data, bytes);
+                }
+            }
+        }
+
         void Update() {
             
             for(Connection& connection : connections) {
