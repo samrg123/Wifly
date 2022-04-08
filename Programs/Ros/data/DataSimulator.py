@@ -129,11 +129,11 @@ class DataSimulator:
         lastState = RobotState()
         for i, state in enumerate(states):
 
-            rotationMatrix = lastState.GetRotationMatrix()
-            sensorValue = SensorValue(
-                angularVelocity    = (rotationMatrix @ (state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT) + self.system.gyroBias,
-                linearAcceleration = (rotationMatrix @ (state.GetVelocity()    - lastState.GetVelocity())    * inverseDeltaT) + self.system.accelerometerBias
-            )
+            # rotationMatrix = lastState.GetRotationMatrix()
+            # sensorValue = SensorValue(
+            #     angularVelocity    = (rotationMatrix @ (state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT) + self.system.gyroBias,
+            #     linearAcceleration = (rotationMatrix @ (state.GetVelocity()    - lastState.GetVelocity())    * inverseDeltaT) + self.system.accelerometerBias
+            # )
 
             # lastMean = lastState.GetMean()
             # currentMean = state.GetMean()
@@ -151,8 +151,14 @@ class DataSimulator:
             #     linearAcceleration = derivative[3:6] * inverseDeltaT + lastRotationMatrix @ self.system.accelerometerBias
             # )
 
-            # lastState = state
-            # sensorValues[i] = sensorValue
+            rotationMatrix = lastState.GetRotationMatrix()
+            sensorValue = SensorValue(
+                angularVelocity    = (rotationMatrix @ (state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT) + self.system.gyroBias,
+                linearAcceleration = (rotationMatrix @ (state.GetVelocity()    - lastState.GetVelocity())    * inverseDeltaT) + self.system.accelerometerBias
+            )
+
+            lastState = state
+            sensorValues[i] = sensorValue
 
         return sensorValues
             

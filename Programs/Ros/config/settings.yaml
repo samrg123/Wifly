@@ -1,9 +1,9 @@
 
 ### Data Handler ###
-dataType: "simulated"
-deltaT: 0.1
-numSamples: 100
-numStates: 4
+# dataType: "simulated"
+# deltaT: 0.1
+# numSamples: 100
+# numStates: 4
 
 dataType: "log"
 dataSensorValueLog: "../sampleData1.log"
@@ -32,7 +32,8 @@ initial_state_variance: [
 ] 
 
 ### path publisher ###
-path_frame_id: "map"
+# path_frame_id: "map"
+frameId: "map"
 gt_path_topic: "groundtruth/path"
 command_path_topic: "command/path"
 ellipse_topic: "robot_state/nonlinear_cov"
