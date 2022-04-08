@@ -7,7 +7,8 @@ import rospy
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
 from system.RobotState import *
-from comm.path_publisher import *
+from comm.PathPublisher import PathPublisher
+from comm.PoseWithCovariancePublisher import PoseWithCovariancePublisher
 from utils.DataHandler import *
 from utils.filter_initialization import filter_initialization
 from utils.system_initialization import system_initialization
@@ -44,18 +45,21 @@ class RobotSystem:
             velocity    = init_state_vals[3:6],
             position    = init_state_vals[6:9]
         )
-        init_state_cov = np.diag(params['initial_state_variance'])**2        
+        init_state_cov = np.diag(params['initial_state_variance'])
         init_state.SetCovariance(init_state_cov)
 
         filter_name = params['filter_name']
-        self.filter = filter_initialization(self.system, init_state.GetMean(), init_state_cov, filter_name)
+        self.filter = filter_initialization(self.system, init_state.GetMean(), init_state_cov, filter_name, params)
 
         # load data
         self.data_handler = DataHandler(self.system)
 
-        self.sate_pub = path_publisher() # filter pose
-        self.cmd_pub = path_publisher()  # theoratical command path
-        self.gt_pub = path_publisher()   # actual robot path
+        # create Ros publishers
+        frameId = params['frameId']
+        self.groundTruthPath    = PathPublisher(frameId, params["gt_path_topic"])
+        self.commandPath        = PathPublisher(frameId, params["command_path_topic"])
+        self.predictedPath      = PathPublisher(frameId, params["path_topic"])
+        self.poseWithCovariance = PoseWithCovariancePublisher(frameId, params["pose_topic"])
 
     def run_filter(self):
         
@@ -70,30 +74,26 @@ class RobotSystem:
             # print("ACCEL: ", sample.sensorValue)
 
             # update model
-            print(sample.groundTruthState.GetPosition())
+            # print(sample.groundTruthState.GetPosition())
             self.filter.prediction(sample.sensorValue, sample.deltaT)
-            self.filter.correction(intensity_query_client(gen_pt(sample.groundTruthState.GetPosition())).intensity)
+            # self.filter.correction(intensity_query_client(gen_pt(sample.groundTruthState.GetPosition())).intensity)
             
             # print("N_PRED:", self.filter.GetState())
             # print("CMD:   ", sample.commandState)
             # print("GT:    ", sample.groundTruthState)
             # print("")
- 
-            # publish estimate 
+
+            # Publish data to rviz
             esitmatedState = self.filter.GetState()
-            esitmatedState.SetPosition(esitmatedState.GetPosition())
-            self.sate_pub.publish_state_path(esitmatedState)
-            self.sate_pub.publish_pose(esitmatedState)
+            self.predictedPath.PublishState(esitmatedState)
+            self.poseWithCovariance.PublishState(esitmatedState)
 
-            # publish ground truth 
-            self.gt_pub.publish_gt_path(sample.groundTruthState)
+            self.commandPath.PublishState(sample.commandState)
+            self.groundTruthPath.PublishState(sample.groundTruthState)
 
-            # publish command state
-            self.cmd_pub.publish_command_path(sample.commandState)
-
+            # Delay until next state
             endLoopTime = rospy.get_rostime()
             deltaLoopTime = endLoopTime - loopTime
-
             sampleDuration = rospy.Duration(sample.deltaT)
 
             sleepThreshold = rospy.Duration(.05)

@@ -4,6 +4,7 @@ from utils.utils import *
 from data.DataSample import DataSample
 from system.RobotState import RobotState
 from system.SensorValue import SensorValue
+from scipy.linalg import logm
 
 class NormalNoise:
     
@@ -58,7 +59,11 @@ class DataSimulator:
         commandStates[0] = lastRobotState
 
         numStates = self.numStates
-        
+        inverseDeltaT = 1. / self.deltaT
+
+        # Note: we travel in constant velocity along path  
+        velocity = np.array([self.velocityNorm, 0, 0])
+
         for i in range(self.numSamples):
             
             statePosition = numStates * (i / self.numSamples)
@@ -69,9 +74,24 @@ class DataSimulator:
             else:
                 theta = np.radians(int(state) * 360/numStates)
 
+            lastRotationMatrix = lastRobotState.GetRotationMatrix()
+
+            # orientation = [0, 0, theta] 
+            # worldVelocity = self.velocityNorm * np.array([np.cos(theta), np.sin(theta), 0])
+
+            # deltaOrientation = orientation - lastRobotState.GetOrientation()
+            # deltaVelocity = lastRotationMatrix @ worldVelocity - lastRobotState.GetVelocity()
+
+            # sensorValue = SensorValue(
+            #     angularVelocity    = inverseDeltaT * lastRotationMatrix @ deltaOrientation,
+            #     linearAcceleration = inverseDeltaT * deltaVelocity
+            # )
+
+            # robotState = self.system.GammaMotionFunction(lastRobotState, sensorValue, self.deltaT)
+
             robotState = RobotState(
-                position    = lastRobotState.GetPosition() + lastRobotState.GetVelocity() * self.deltaT,
-                velocity    = self.velocityNorm * np.array([np.cos(theta), np.sin(theta), 0]),
+                position    = lastRobotState.GetPosition() + lastRotationMatrix @ lastRobotState.GetVelocity() * self.deltaT,
+                velocity    = velocity,
                 orientation = [0, 0, theta]
             )
 
@@ -130,11 +150,26 @@ class DataSimulator:
         lastState = RobotState()
         for i, state in enumerate(states):
 
-            rotationMatrix = lastState.GetRotationMatrix()
+            # rotationMatrix = lastState.GetRotationMatrix()
+            # sensorValue = SensorValue(
+            #     angularVelocity    = (rotationMatrix @ (state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT) + self.system.gyroBias,
+            #     linearAcceleration = (rotationMatrix @ (state.GetVelocity()    - lastState.GetVelocity())    * inverseDeltaT) + self.system.accelerometerBias
+            # )
 
+            lastRotationMatrix = lastState.GetRotationMatrix()
+            currentRotationMatrix = state.GetRotationMatrix()
+
+            deltaOrientation    = RobotState.VeeSO3(logm(lastRotationMatrix.T @ currentRotationMatrix))
+            deltaLinearVelocity = np.linalg.inv(lastRotationMatrix @ self.system.Gamma1(deltaOrientation)) @ (state.GetVelocity() - lastState.GetVelocity())
+            
+            # deltaPosition = self.deltaT * (lastState.GetVelocity() - lastRotationMatrix @ self.system.velocityBias)
+            # deltaLinearVelocity = inverseDeltaT * np.linalg.inv(lastRotationMatrix @ self.system.Gamma2(deltaOrientation)) @ \
+            #                       (state.GetPosition() - lastState.GetPosition() - lastRotationMatrix @ deltaPosition)
+
+            rotationMatrix = lastState.GetRotationMatrix()
             sensorValue = SensorValue(
-                angularVelocity    = rotationMatrix @ ((state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT + self.system.gyroBias),
-                linearAcceleration = rotationMatrix @ ((state.GetVelocity() - lastState.GetVelocity()) * inverseDeltaT + self.system.accelerometerBias)
+                angularVelocity    = inverseDeltaT * deltaOrientation    + lastRotationMatrix @ self.system.gyroBias,
+                linearAcceleration = inverseDeltaT * deltaLinearVelocity + lastRotationMatrix @ self.system.accelerometerBias
             )
 
             lastState = state
@@ -155,7 +190,8 @@ class DataSimulator:
 
         worldMotionNoise = MotionNoise(
             velocityNoise    = NormalNoise.Zero(),
-            orientationNoise = NormalNoise.Zero(), #NormalNoise(mean = [0, .01, 0], covariance = np.diag([0, 0, .001]))
+            # orientationNoise = NormalNoise(mean = [.3, 0, 0], covariance = np.diag([0, 0, 0]))
+            orientationNoise = NormalNoise.Zero()
         )
 
         self.commandStates      = self.GenerateCommandStates()

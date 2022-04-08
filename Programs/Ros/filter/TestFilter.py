@@ -15,11 +15,13 @@ from utils.utils import *
 
 class TestFilter:
 
-    def __init__(self, system, init):
+    def __init__(self, system, init, params):
 
         #   system: system and noise models
         #   init:   initial state mean and covariance
-        self.motionFunction = system.MotionFunction
+        # self.motionFunction = system.StepWiseMotionFunction
+        # self.motionFunction = system.ExpmMotionFunction
+        self.motionFunction = system.GammaMotionFunction
 
         self.state = RobotState()
 
@@ -28,13 +30,14 @@ class TestFilter:
         self.R = system.R # Wifi Noise
         self.noisy = system.noisy # Flag to determine if noise is added
 
-        self.n = init.n
-        w = 1/self.n
+        self.n = GetParam(params, "numParticles", 10)
+
+        w = 1/self.n if self.n > 0 else 0
         # self.p = system.p
-        self.p_w = w*np.zeros(init.n).reshape(init.n, 1)
+        self.p_w = w*np.zeros(self.n).reshape(self.n, 1)
         L = np.linalg.cholesky(init.Sigma)[0:3, 0:3]
         self.p = []
-        for i in range(init.n): 
+        for i in range(self.n): 
             #hardcoding for now...
             self.p.append(RobotState(position=((L@np.random.randn(3, 1) + np.zeros((3, 1))).reshape(-1) + init.mu[0:3, 4])))
 
@@ -44,11 +47,8 @@ class TestFilter:
 
     
     def prediction(self, sensorValue, deltaT):
-        state = self.state
+        state = np.copy(self.state)
         covariance = self.state.GetCovariance()
-
-        # TODO: WE NEED TO SWITCH TO PROPER SE(3) OTHERWISE FORCE OF GRAVITY MESSES UP 
-        #       ACCELERATION MODEL AND INTRODUCES DRIFT!
 
         # simply propagate the state and assign identity to covariance
         for i in range(len(self.p)): 
@@ -59,6 +59,8 @@ class TestFilter:
         # TODO: Update the mean values
         # self.state.SetMean(np.mean(self.p))
         # self.state.SetMean(predictedState.GetMean())
+
+        self.state = self.motionFunction(self.state, sensorValue, deltaT)
         self.state.SetCovariance(predictedCovariance)
 
     # def intensity_query_client(pos): 
