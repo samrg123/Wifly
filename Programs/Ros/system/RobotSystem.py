@@ -73,6 +73,12 @@ class RobotSystem:
             print(sample.groundTruthState.GetPosition())
             self.filter.prediction(sample.sensorValue, sample.deltaT)
             self.filter.correction(intensity_query_client(gen_pt(sample.groundTruthState.GetPosition())).intensity)
+            if filter.Neff < filter.n / 5:
+                self.filter.resampling()
+            wtot = np.sum(self.filter.p_w)
+            if wtot > 0:
+                x[0, i] = np.sum(filter.p.x[:, 0] * filter.p.w.reshape(-1)) / wtot
+                x[1, i] = np.sum(filter.p.x[:, 1] * filter.p.w.reshape(-1)) / wtot
             
             # print("N_PRED:", self.filter.GetState())
             # print("CMD:   ", sample.commandState)

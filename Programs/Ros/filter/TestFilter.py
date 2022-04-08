@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.join(os.path.abspath(__file
 # sys.path.append(rospkg.RosPack().get_path("wifly2"))
 from scripts.intensity_client_test import gen_pt, intensity_query_client
 from scipy.stats import multivariate_normal
+from scipy.spatial.transform import Rotation
 
 
 from system.RobotState import RobotState
@@ -59,7 +60,7 @@ class TestFilter:
         # TODO: Update the mean values
         # self.state.SetMean(np.mean(self.p))
         # self.state.SetMean(predictedState.GetMean())
-        self.state.SetCovariance(predictedCovariance)
+        # self.state.SetCovariance(predictedCovariance)
 
     # def intensity_query_client(pos): 
     #     rospy.wait_for_service("intensity")
@@ -94,6 +95,11 @@ class TestFilter:
         self.p_w = self.p_w/np.sum(self.p_w)
         self.Neff = 1/np.sum(np.power(self.p_w, 2))
 
+        if self.Neff < self.n/5: 
+            self.resampling()
+
+        self.mean_variance()
+
     def resampling(self): 
         W = np.cumsum(self.p_w)
         r = rand(1) / self.n
@@ -104,6 +110,37 @@ class TestFilter:
                 j = j + 1
             self.p[i] = self.p[j]
             self.p_w[i] = 1 / self.n
+
+    def mean_variance(self): 
+
+        means = np.array(6, self.n)
+        quats = np.array(4, self.n)
+        mean = np.array(6, 1)
+        quat = np.array(4, 1)
+
+        for s in range(len(self.p)): 
+            pv = np.hstack(self.p[s].GetPosition(), self.p[s].getVelocity())
+            means[:, s] = pv
+            mean[:] += pv*self.p_w[s]
+
+            rot = self.p[s].as_quat()
+            quats[:, s] = rot/np.linalg.norm(rot)
+            quat[:] += rot*self.p_w[i]
+
+        quat = quat/np.linalg.norm(quat)
+        rot = Rotation.from_quat(quat)
+
+        means = means - mean
+        pos_cov = means[0:3, :].T@means[0:3, :]
+        vel_cov = means[3:6, :].T@means[3:6, :]
+        cov = block_diag(np.eye(3), vel_cov, pos_cov)
+        mean_lie = np.eye(5)
+        mean_lie[0:3, 0:3] = rot
+        mean_lie[0:3, 3] = mean[3:6]
+        mean_lie[0:3, 4] = mean[0:3] 
+
+        self.SetMean(mean_lie)
+        self.SetCovariance(cov)
 
 
     def GetState(self):
