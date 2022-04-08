@@ -12,7 +12,6 @@ class system_initialization:
         self.gyroBias          = GetParam(params, "gyroBias",     np.zeros(3))
         self.velocityBias      = GetParam(params, "velocityBias", np.zeros(3))
         self.accelerometerBias = GetParam(params, "acclerometerBias", np.array([0, 0, gForceOfGravity]))
-        # self.accelerometerBias = GetParam(params, "acclerometerBias", np.zeros(3))
 
         self.Q = 0.1*np.eye(3)
         self.R = 3
@@ -28,11 +27,15 @@ class system_initialization:
         angularVelocity    = sensorValue.GetAngularVelocity()
         linearAcceleration = sensorValue.GetLinearAcceleration()
 
+        deltaOrientation    = deltaT * (angularVelocity    - rotationMatrix @ self.gyroBias)
+        deltaLinearVelocity = deltaT * (linearAcceleration - rotationMatrix @ self.accelerometerBias)
+        deltaPosition       = deltaT * (linearVelocity     - rotationMatrix @ self.velocityBias) 
+
         r = RobotState(
-            velocity    = linearVelocity + (rotationMatrix.T @ linearAcceleration - self.accelerometerBias) * deltaT,
-            position    = position       + (linearVelocity - self.velocityBias) * deltaT
+            velocity = linearVelocity + rotationMatrix @ deltaLinearVelocity,
+            position = position       + rotationMatrix @ deltaPosition
         )
-        r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3( (angularVelocity - rotationMatrix @ self.gyroBias) * deltaT) ))
+        r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3(deltaOrientation) ))
 
         return r
 
@@ -48,7 +51,7 @@ class system_initialization:
         derivative = np.hstack((
             angularVelocity     - rotationMatrix @ self.gyroBias,
             linearAcceleration  - rotationMatrix @ self.accelerometerBias,
-            linearVelocity      - rotationMatrix @ self.velocityBias 
+            linearVelocity      - rotationMatrix @ self.velocityBias
         ))
 
         return RobotState.FromMean(state.GetMean() @ expm( RobotState.Wedge(derivative * deltaT) ))
@@ -63,19 +66,20 @@ class system_initialization:
         angularVelocity    = sensorValue.GetAngularVelocity()
         linearAcceleration = sensorValue.GetLinearAcceleration()        
 
-        deltaOrientation    = deltaT * (angularVelocity - rotationMatrix @ self.gyroBias)
+        deltaOrientation    = deltaT * (angularVelocity    - rotationMatrix @ self.gyroBias)
         deltaLinearVelocity = deltaT * (linearAcceleration - rotationMatrix @ self.accelerometerBias)
-
-        # biasCorrectedAngularVelocity    = angularVelocity - rotationMatrix @ self.gyroBias
-        # biasCorrectedLinearAcceleration = linearAcceleration - rotationMatrix @ self.accelerometerBias
+        deltaPosition       = deltaT * (linearVelocity     - rotationMatrix @ self.velocityBias)
         
-        deltaVelocity = rotationMatrix @ self.Gamma1(deltaOrientation) @ deltaLinearVelocity
-        deltaPosition = rotationMatrix @ linearVelocity * deltaT + \
-                        rotationMatrix @ self.Gamma2(deltaOrientation) @ deltaLinearVelocity*deltaT
+        velocity = linearVelocity + \
+                   rotationMatrix @ self.Gamma1(deltaOrientation) @ deltaLinearVelocity
+
+        position = position + \
+                   rotationMatrix @ deltaPosition + \
+                   rotationMatrix @ self.Gamma2(deltaOrientation) @ deltaLinearVelocity*deltaT
 
         r = RobotState(
-            position = position + deltaPosition,
-            velocity = linearVelocity + deltaVelocity
+            position = position,
+            velocity = velocity
         )
         r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3(deltaOrientation) ))
 

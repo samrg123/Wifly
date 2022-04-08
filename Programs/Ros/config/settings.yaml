@@ -1,17 +1,19 @@
 
 ### Data Handler ###
-# dataType: "simulated"
-# deltaT: 0.1
-# numSamples: 100
-# numStates: 4
+dataType: "simulated"
+deltaT: 0.1
+numSamples: 100
+numStates: 4
+stateTransitionWidth: 1.
+velocityNorm: 10
 
-dataType: "log"
-dataSensorValueLog: "../sampleData1.log"
-computeBiasSamples: 5
+# dataType: "log"
+# dataSensorValueLog: "../sampleData1.log"
+# computeBiasSamples: 5
 
 ### Robot System ###
 filter_name: "TestFilter" 
-numParticles: 1
+numParticles: 0
 
 alphas_sqrt: [
   0,  0,  0, 

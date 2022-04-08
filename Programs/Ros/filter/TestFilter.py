@@ -19,6 +19,8 @@ class TestFilter:
 
         #   system: system and noise models
         #   init:   initial state mean and covariance
+        # self.motionFunction = system.StepWiseMotionFunction
+        # self.motionFunction = system.ExpmMotionFunction
         self.motionFunction = system.GammaMotionFunction
 
         self.state = RobotState()
@@ -30,7 +32,7 @@ class TestFilter:
 
         self.n = GetParam(params, "numParticles", 10)
 
-        w = 1/self.n
+        w = 1/self.n if self.n > 0 else 0
         # self.p = system.p
         self.p_w = w*np.zeros(self.n).reshape(self.n, 1)
         L = np.linalg.cholesky(init.Sigma)[0:3, 0:3]
@@ -45,7 +47,7 @@ class TestFilter:
 
     
     def prediction(self, sensorValue, deltaT):
-        state = self.state
+        state = np.copy(self.state)
         covariance = self.state.GetCovariance()
 
         # simply propagate the state and assign identity to covariance

@@ -7,6 +7,10 @@ from utils.utils import *
 
 class RobotState:
 
+    # Note: velocity is relative to sensorFrame. 
+    #       Position and rotation is relative to world frame
+    #       You can get the world frame velocity with state.GetRotationMatrix() @ state.GetVelocity()
+
     def __init__(self, 
                  position = np.zeros(3), orientation = np.zeros(3), velocity = np.zeros(3),
                  positionCovariance = np.zeros(3), orientationCovariance = np.zeros(3), velocityCovariance = np.zeros(3)):
@@ -51,6 +55,10 @@ class RobotState:
         ])
 
     @staticmethod
+    def VeeSO3(so3):
+        return np.array([ so3[2, 1], so3[0, 2], so3[1, 0] ])
+
+    @staticmethod
     def Wedge(derivative):
 
         dTheta    = derivative[0:3].reshape(-1)
@@ -66,10 +74,10 @@ class RobotState:
         ])
 
     @staticmethod
-    def Vee(se2):
-        dTheta    = [se2[2,1], se2[0,2], se2[1,0]]
-        dVelocity = se2[0:3,3]
-        dPosition = se2[0:3,4]
+    def Vee(se2_3):
+        dTheta    = [se2_3[2,1], se2_3[0,2], se2_3[1,0]]
+        dVelocity = se2_3[0:3,3]
+        dPosition = se2_3[0:3,4]
 
         return np.hstack((dTheta, dVelocity, dPosition))
 

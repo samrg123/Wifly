@@ -57,7 +57,11 @@ class DataSimulator:
         commandStates[0] = lastRobotState
 
         numStates = self.numStates
-        
+        inverseDeltaT = 1. / self.deltaT
+
+        # Note: we travel in constant velocity along path  
+        velocity = np.array([self.velocityNorm, 0, 0])
+
         for i in range(self.numSamples):
             
             statePosition = numStates * (i / self.numSamples)
@@ -68,9 +72,24 @@ class DataSimulator:
             else:
                 theta = np.radians(int(state) * 360/numStates)
 
+            lastRotationMatrix = lastRobotState.GetRotationMatrix()
+
+            # orientation = [0, 0, theta] 
+            # worldVelocity = self.velocityNorm * np.array([np.cos(theta), np.sin(theta), 0])
+
+            # deltaOrientation = orientation - lastRobotState.GetOrientation()
+            # deltaVelocity = lastRotationMatrix @ worldVelocity - lastRobotState.GetVelocity()
+
+            # sensorValue = SensorValue(
+            #     angularVelocity    = inverseDeltaT * lastRotationMatrix @ deltaOrientation,
+            #     linearAcceleration = inverseDeltaT * deltaVelocity
+            # )
+
+            # robotState = self.system.GammaMotionFunction(lastRobotState, sensorValue, self.deltaT)
+
             robotState = RobotState(
-                position    = lastRobotState.GetPosition() + lastRobotState.GetVelocity() * self.deltaT,
-                velocity    = self.velocityNorm * np.array([np.cos(theta), np.sin(theta), 0]),
+                position    = lastRobotState.GetPosition() + lastRotationMatrix @ lastRobotState.GetVelocity() * self.deltaT,
+                velocity    = velocity,
                 orientation = [0, 0, theta]
             )
 
@@ -135,26 +154,20 @@ class DataSimulator:
             #     linearAcceleration = (rotationMatrix @ (state.GetVelocity()    - lastState.GetVelocity())    * inverseDeltaT) + self.system.accelerometerBias
             # )
 
-            # lastMean = lastState.GetMean()
-            # currentMean = state.GetMean()
+            lastRotationMatrix = lastState.GetRotationMatrix()
+            currentRotationMatrix = state.GetRotationMatrix()
 
-            # se2Mean = logm(np.linalg.inv(lastMean) @ currentMean)
-            # se2State = RobotState.FromMean(se2Mean)
-            # print("se2Mean:", se2Mean)
-            # print("se2Orientation:", se2State.GetOrientation())
-            # derivative = RobotState.Vee(se2Mean)
-
-            # lastRotationMatrix = lastState.GetRotationMatrix()
-
-            # sensorValue = SensorValue(
-            #     angularVelocity    = derivative[0:3] * inverseDeltaT + lastRotationMatrix @ self.system.gyroBias,
-            #     linearAcceleration = derivative[3:6] * inverseDeltaT + lastRotationMatrix @ self.system.accelerometerBias
-            # )
+            deltaOrientation    = RobotState.VeeSO3(logm(lastRotationMatrix.T @ currentRotationMatrix))
+            deltaLinearVelocity = np.linalg.inv(lastRotationMatrix @ self.system.Gamma1(deltaOrientation)) @ (state.GetVelocity() - lastState.GetVelocity())
+            
+            # deltaPosition = self.deltaT * (lastState.GetVelocity() - lastRotationMatrix @ self.system.velocityBias)
+            # deltaLinearVelocity = inverseDeltaT * np.linalg.inv(lastRotationMatrix @ self.system.Gamma2(deltaOrientation)) @ \
+            #                       (state.GetPosition() - lastState.GetPosition() - lastRotationMatrix @ deltaPosition)
 
             rotationMatrix = lastState.GetRotationMatrix()
             sensorValue = SensorValue(
-                angularVelocity    = (rotationMatrix @ (state.GetOrientation() - lastState.GetOrientation()) * inverseDeltaT) + self.system.gyroBias,
-                linearAcceleration = (rotationMatrix @ (state.GetVelocity()    - lastState.GetVelocity())    * inverseDeltaT) + self.system.accelerometerBias
+                angularVelocity    = inverseDeltaT * deltaOrientation    + lastRotationMatrix @ self.system.gyroBias,
+                linearAcceleration = inverseDeltaT * deltaLinearVelocity + lastRotationMatrix @ self.system.accelerometerBias
             )
 
             lastState = state
