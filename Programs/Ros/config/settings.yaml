@@ -4,13 +4,16 @@ dataType: "simulated"
 deltaT: 0.1
 numSamples: 100
 numStates: 4
+stateTransitionWidth: 1.
+velocityNorm: 10
 
 # dataType: "log"
-# dataSensorValueLog: "../sampleData.log"
+# dataSensorValueLog: "../sampleData1.log"
 # computeBiasSamples: 5
 
 ### Robot System ###
 filter_name: "TestFilter" 
+numParticles: 0
 
 alphas_sqrt: [
   0,  0,  0, 
@@ -20,7 +23,7 @@ alphas_sqrt: [
 initial_state_vals: [
   0, 0,  0, # orientation
   0, 0,  0, # velocity
-  10, 5,  0  # position 
+  0, 0,  0  # position 
 ]
 
 # Note: in sqrt values
@@ -31,7 +34,8 @@ initial_state_variance: [
 ] 
 
 ### path publisher ###
-path_frame_id: "map"
+# path_frame_id: "map"
+frameId: "map"
 gt_path_topic: "groundtruth/path"
 command_path_topic: "command/path"
 ellipse_topic: "robot_state/nonlinear_cov"

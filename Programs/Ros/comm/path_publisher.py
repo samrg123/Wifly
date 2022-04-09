@@ -11,8 +11,8 @@ from scipy.linalg import expm, logm
 import rospy
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped
-from geometry_msgs.msg import Point
 from nav_msgs.msg import Path
+from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 
@@ -25,15 +25,14 @@ class path_publisher:
         with open("config/settings.yaml", 'r') as stream:
             param = yaml.safe_load(stream)
         
-        pose_topic = param['pose_topic']
-        path_topic = param['path_topic']
-        gt_path_topic = param['gt_path_topic']
-        command_path_topic = param['command_path_topic']
+        pose_topic    = param['pose_topic']
+        path_topic    = param['path_topic']
         ellipse_topic = param['ellipse_topic']
 
-        self.path_frame = param['path_frame_id']
+        gt_path_topic       = param['gt_path_topic']
+        command_path_topic  = param['command_path_topic']
 
-        self.filter_name = param['filter_name']
+        self.path_frame = param['path_frame_id']
 
         self.path = Path()
         self.path.header.frame_id = self.path_frame
@@ -46,6 +45,7 @@ class path_publisher:
         self.gt_path_pub = rospy.Publisher(gt_path_topic,Path,queue_size=10)
         self.cmd_path_pub = rospy.Publisher(command_path_topic,Path,queue_size=10)
         self.ellipse_pub = rospy.Publisher(ellipse_topic,Marker,queue_size=10)
+ 
 
     def publish_pose(self, state):
 
