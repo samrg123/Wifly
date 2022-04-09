@@ -76,24 +76,24 @@ class DataSimulator:
 
             lastRotationMatrix = lastRobotState.GetRotationMatrix()
 
-            # orientation = [0, 0, theta] 
-            # worldVelocity = self.velocityNorm * np.array([np.cos(theta), np.sin(theta), 0])
+            orientation = [0, 0, theta] 
+            worldVelocity = self.velocityNorm * np.array([np.cos(theta), np.sin(theta), 0])
 
-            # deltaOrientation = orientation - lastRobotState.GetOrientation()
-            # deltaVelocity = lastRotationMatrix @ worldVelocity - lastRobotState.GetVelocity()
+            deltaOrientation = orientation - lastRobotState.GetOrientation()
+            deltaVelocity = lastRotationMatrix @ worldVelocity - lastRobotState.GetVelocity()
 
-            # sensorValue = SensorValue(
-            #     angularVelocity    = inverseDeltaT * lastRotationMatrix @ deltaOrientation,
-            #     linearAcceleration = inverseDeltaT * deltaVelocity
-            # )
-
-            # robotState = self.system.GammaMotionFunction(lastRobotState, sensorValue, self.deltaT)
-
-            robotState = RobotState(
-                position    = lastRobotState.GetPosition() + lastRotationMatrix @ lastRobotState.GetVelocity() * self.deltaT,
-                velocity    = velocity,
-                orientation = [0, 0, theta]
+            sensorValue = SensorValue(
+                angularVelocity    = inverseDeltaT * lastRotationMatrix @ deltaOrientation,
+                linearAcceleration = inverseDeltaT * deltaVelocity
             )
+
+            robotState = self.system.GammaMotionFunction(lastRobotState, sensorValue, self.deltaT)
+
+            # robotState = RobotState(
+            #     position    = lastRobotState.GetPosition() + lastRotationMatrix @ lastRobotState.GetVelocity() * self.deltaT,
+            #     velocity    = velocity,
+            #     orientation = [0, 0, theta]
+            # )
 
             lastRobotState = robotState
             commandStates[i] = robotState

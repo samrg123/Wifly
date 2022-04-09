@@ -445,7 +445,7 @@ class Wifly {
             // Init IMU
             display.println("Connecting IMU\n");
             // imu.Init(MPU6050_RANGE_2_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_260_HZ);
-            imu.Init(MPU6050_RANGE_4_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_5_HZ);
+            imu.Init(MPU6050_RANGE_4_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_260_HZ);
             
             // Connect to wifi
             display.printf("Connecting WIFI:\n'%s'\n\n", kSSID);

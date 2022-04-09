@@ -7,9 +7,10 @@ numStates: 4
 velocityNorm: 1
 # stateTransitionWidth: 1.
 
-# dataType: "log"
-# dataSensorValueLog: "../sampleData1.log"
-# computeBiasSamples: 5
+dataType: "log"
+# dataSensorValueLog: "../shubhamCircle4.log"
+dataSensorValueLog: "../deskCircle2.log"
+computeBiasSamples: 10
 
 ### Robot System ###
 filter_name: "TestFilter" 
