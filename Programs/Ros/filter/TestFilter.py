@@ -31,11 +31,11 @@ class TestFilter:
         self.R = system.R # Wifi Noise
         self.noisy = system.noisy # Flag to determine if noise is added
 
-        self.n = GetParam(params, "numParticles", 10)
+        self.n = 100
 
         w = 1/self.n if self.n > 0 else 0
         # self.p = system.p
-        self.p_w = w*np.zeros(self.n).reshape(self.n, 1)
+        self.p_w = w*np.ones(self.n).reshape(self.n, 1)
         L = np.linalg.cholesky(init.Sigma)[0:3, 0:3]
         self.p = []
         for i in range(self.n): 
@@ -85,14 +85,15 @@ class TestFilter:
         for i in range(len(self.p)):
             pos = self.p[i].GetPosition()
             wifi = intensity_query_client(gen_pt(pos))
-            if (wifi.x == -1 and wifi.y == -1): 
+            if (wifi.x == -1 and wifi.y == -1) or wifi.occupied: 
                 w[i] = 0
                 continue
             v = z - wifi.intensity
             w[i] = multivariate_normal.pdf(v, 0, self.R)
 
-        self.p_w = np.multiply(self.p_w, w)
-        self.p_w = self.p_w/np.sum(self.p_w)
+        if np.sum(w) != 0: 
+            self.p_w = np.multiply(self.p_w, w)
+            self.p_w = self.p_w/np.sum(self.p_w)
         self.Neff = 1/np.sum(np.power(self.p_w, 2))
 
         if self.Neff < self.n/5: 
@@ -102,7 +103,7 @@ class TestFilter:
 
     def resampling(self): 
         W = np.cumsum(self.p_w)
-        r = rand(1) / self.n
+        r = np.random.rand(1) / self.n
         j = 1
         for i in range(self.n): 
             u = r + (i-1)/self.n
@@ -113,34 +114,34 @@ class TestFilter:
 
     def mean_variance(self): 
 
-        means = np.array(6, self.n)
-        quats = np.array(4, self.n)
-        mean = np.array(6, 1)
-        quat = np.array(4, 1)
+        means = np.zeros((6, self.n))
+        quats = np.zeros((4, self.n))
+        mean = np.zeros((6))
+        quat = np.zeros((4))
 
         for s in range(len(self.p)): 
-            pv = np.hstack(self.p[s].GetPosition(), self.p[s].getVelocity())
+            pv = np.hstack((self.p[s].GetPosition(), self.p[s].GetVelocity()))
             means[:, s] = pv
             mean[:] += pv*self.p_w[s]
 
-            rot = self.p[s].as_quat()
+            rot = Rotation.from_matrix(self.p[s].GetRotationMatrix()).as_quat()
             quats[:, s] = rot/np.linalg.norm(rot)
-            quat[:] += rot*self.p_w[i]
+            quat[:] += rot*self.p_w[s]
 
         quat = quat/np.linalg.norm(quat)
-        rot = Rotation.from_quat(quat)
+        rot = Rotation.from_quat(quat).as_matrix()
 
-        means = means - mean
-        pos_cov = means[0:3, :].T@means[0:3, :]
-        vel_cov = means[3:6, :].T@means[3:6, :]
+        means = means - mean.reshape(-1, 1)
+        pos_cov = means[0:3, :]@means[0:3, :].T
+        vel_cov = means[3:6, :]@means[3:6, :].T
         cov = block_diag(np.eye(3), vel_cov, pos_cov)
         mean_lie = np.eye(5)
         mean_lie[0:3, 0:3] = rot
         mean_lie[0:3, 3] = mean[3:6]
         mean_lie[0:3, 4] = mean[0:3] 
 
-        self.SetMean(mean_lie)
-        self.SetCovariance(cov)
+        self.state.SetMean(mean_lie)
+        self.state.SetCovariance(cov)
 
 
     def GetState(self):

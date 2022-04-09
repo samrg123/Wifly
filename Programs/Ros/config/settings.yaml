@@ -4,8 +4,8 @@ dataType: "simulated"
 deltaT: 0.1
 numSamples: 100
 numStates: 4
-stateTransitionWidth: 1.
-velocityNorm: 10
+velocityNorm: 1
+# stateTransitionWidth: 1.
 
 # dataType: "log"
 # dataSensorValueLog: "../sampleData1.log"
@@ -23,7 +23,7 @@ alphas_sqrt: [
 initial_state_vals: [
   0, 0,  0, # orientation
   0, 0,  0, # velocity
-  0, 0,  0  # position 
+  5, 6.5,  0  # position 
 ]
 
 # Note: in sqrt values
