@@ -33,28 +33,66 @@ class RobotState:
         np.copyto(self._velocityCovariance, velocityCovariance)
         np.copyto(self._positionCovariance, positionCovariance)
 
+    def __mul__(self, scaler):
+        return RobotState.FromMean(self._mean * scaler)
+
+    def __rmul__(self, scaler):
+        return self.__mul__(scaler)
+
     @staticmethod
-    def MeanState(states):
+    def MeanState(states, weights = None):
         
         if len(states) == 0:
             return RobotState()
 
-        rotationMatricies = [ state.GetRotationMatrix() for state in states ]
-        velocities        = [ state.GetVelocity() for state in states ]
-        positions         = [ state.GetPosition() for state in states ]
-        covariances       = [ state.GetCovariance() for state in states ]
-
+        rotationMatricies = [ state._rotationMatrix for state in states ]
+        velocities        = [ state._velocity       for state in states ]
+        positions         = [ state._position       for state in states ]
+        covariances       = [ state._covariance     for state in states ]
+        
         rotations = Rotation.from_matrix(rotationMatricies)
 
+        meanRotation = rotations.mean(weights = weights)
+        meanPosition = np.average(positions,  axis = 0, weights = weights)
+        meanVelocity = np.average(velocities, axis = 0, weights = weights)
+
         r = RobotState(
-            position    = np.mean(positions),
-            velocity    = np.mean(velocities),
-            orientation = rotations.mean().as_euler("xyz")
+            position    = meanPosition,
+            velocity    = meanVelocity,
+            orientation = meanRotation.as_euler("xyz")
         )
 
-        r.SetCovariance(np.mean(covariances))
+        #TODO: is this computed right?  
+        meanCovariance = np.average(covariances, axis = 0, weights = weights)
+        r.SetCovariance(meanCovariance)
 
         return r
+
+    def SampleNeighborhood(self):
+
+        gaussianMean = np.hstack((
+            self.GetOrientation(),
+            self._velocity,
+            self._position,
+        ))
+        
+        sample = gRng.multivariate_normal(gaussianMean, self._covariance)
+
+        r = RobotState(
+            orientation = sample[0:3],
+            velocity    = sample[3:6],
+            position    = sample[6:9],
+        )
+        r.SetCovariance(self._covariance)
+
+        return r
+
+        particleState = RobotState.FromMean(
+                
+            )
+
+        # return 
+
 
     @staticmethod
     def Copy(state):

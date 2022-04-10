@@ -24,65 +24,53 @@ class TestFilter:
 
         initialState = system.initialState
         self.state = RobotState.Copy(initialState)
+        self.integrationState = RobotState.Copy(initialState)
 
         initialMean       = initialState.GetMean()
         initialCovariance = initialState.GetCovariance()
 
         #TODO: What is this? store params in settings.yaml 
-        self.R = GetParam(params, "wifiErrorCovariance", 5) # Wifi Noise
-        self.noisy = False # Flag to determine if noise is added
-
+        self.R = GetParam(params, "wifiErrorCovariance", 5)
         self.n = GetParam(params, "numParticles", 100)
 
         w = 1/self.n if self.n > 0 else 0
-        self.p_w = w*np.ones(self.n).reshape(self.n, 1)
+        self.p_w = w * np.ones(self.n)
 
         self.particleSensorNoise = SensorNoise(
-            accelerometerNoise = NormalNoise(mean = np.zeros(3), covariance = [1, 1, 0] * np.full(3, 7.61543504e-7)),
-            gyroNoise          = NormalNoise(mean = np.zeros(3), covariance = [1, 1, 0] * np.full(3, 2.0397832)),
+            # gyroNoise          = NormalNoise(mean = np.zeros(3), covariance = [0, 0, 1] * np.full(3, 7.61543504e-7)),
+            # accelerometerNoise = NormalNoise(mean = np.zeros(3), covari
+            gyroNoise          = NormalNoise(mean = np.zeros(3), covariance = [0, 0, 1] * np.full(3, .5)),
+            accelerometerNoise = NormalNoise(mean = np.zeros(3), covariance = [1, 1, 0] * np.full(3, 20.0397832)),
             rssiNoise          = NormalNoise(mean = [0], covariance = [10])
         ) 
 
-        # Note: covariance can be zero if we know our initial position
-        #       Instead we scatter particles uniformly around the map
-        # L = np.linalg.cholesky(initialCovariance)[0:3, 0:3]
-        L = np.array([
-            self.wifiMap.GetWidth(),
-            self.wifiMap.GetHeight(),
-            self.wifiMap.GetDepth() 
-        ])
-
-        self.p = []
-        for i in range(self.n): 
-            
-            particleState = RobotState(
-                position = L * np.random.uniform(size = 3),
-                velocity = initialState.GetVelocity(),
-                orientation = initialState.GetOrientation()
-            )
-
-            particleState.SetCovariance(initialCovariance)
-
+        self.p = [ RobotState.Copy(initialState) ]
+        for i in range(self.n - 1): 
+            particleState = initialState.SampleNeighborhood()
             self.p.append(particleState)
 
     def GetParticleStates(self):
-        return self.p
+        return np.copy(self.p)
 
+    def GetIntegrationState(self):
+        return RobotState.Copy(self.integrationState)
 
     def prediction(self, sensorValue, deltaT):
-        state = np.copy(self.state)
+
         covariance = self.state.GetCovariance()
 
+        self.p[0] = self.motionFunction(self.p[0], sensorValue, deltaT)
+
         # simply propagate the state and assign identity to covariance
-        for i in range(len(self.p)): 
+        for i in range(1, self.n): 
 
             state = self.p[i]
-
             sensorNoise = self.particleSensorNoise.Sample()
             self.p[i] = self.motionFunction(state, sensorValue + sensorNoise, deltaT)
 
-
         predictedCovariance = covariance
+
+        self.integrationState = self.motionFunction(self.integrationState, sensorValue, deltaT)
 
         # TODO: Update the mean values
         # self.state.SetMean(np.mean(self.p))
@@ -108,38 +96,37 @@ class TestFilter:
 
     def correction(self, sensorValue, deltaT):
 
-        # # NOTE: THIS IS PLACEHOLDER FOR DEBUGGING
-        # self.state = self.motionFunction(self.state, sensorValue, deltaT)
-        # return
-
-        wifiMap = self.wifiMap
-    
+        wifiMap = self.wifiMap    
         rssi = sensorValue.GetRssi()
         
-        w = np.zeros((self.n, 1))
-        for i in range(len(self.p)):
+        w = np.zeros(self.n)
+        for i in range(self.n):
             
             particleState = self.p[i]
-             
             wifi = wifiMap.QueryWifi(particleState)
-        
-            if (wifi.x == -1 and wifi.y == -1) or wifi.occupied: 
-                w[i] = 0
-                continue
+
+            # # TODO: simulated data ignores these values
+            # if (wifi.x == -1 and wifi.y == -1) or wifi.occupied: 
+            #     w[i] = 0
+            #     continue
             
             v = rssi - wifi.intensity
             
             w[i] = multivariate_normal.pdf(v, 0, self.R)
 
         if np.sum(w) != 0: 
-            self.p_w = np.multiply(self.p_w, w)
+            self.p_w = self.p_w * w
             self.p_w = self.p_w/np.sum(self.p_w)
-        self.Neff = 1/np.sum(np.power(self.p_w, 2))
 
-        if self.Neff < self.n/5: 
+        self.Neff = 1/np.sum(self.p_w * self.p_w)
+        if self.Neff < (.2 * self.n): 
             self.resampling()
 
-        self.mean_variance()
+        self.p_w = self.p_w/np.sum(self.p_w)
+
+        self.state = RobotState.MeanState(self.p, self.p_w)
+        # self.mean_variance()
+
 
     def resampling(self): 
         W = np.cumsum(self.p_w)
@@ -150,13 +137,7 @@ class TestFilter:
             while u > W[j]: 
                 j = j + 1
 
-            # NOTE: jitter added to prevent particles from collapsing on each other  
-            # self.p[i] = self.p[j]
-            self.p[i] = RobotState(
-                position = self.p[j].GetPosition() + [.05, .05, 0] * np.random.randn(3), 
-                orientation = self.p[j].GetOrientation(), 
-                velocity = self.p[j].GetVelocity()
-            )
+            self.p[i] = RobotState.Copy(self.p[j])
 
             self.p_w[i] = 1 / self.n
 

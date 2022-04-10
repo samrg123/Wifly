@@ -49,6 +49,7 @@ class RobotSystem:
         self.poseWithCovariance = PoseWithCovariancePublisher(frameId, params["pose_topic"])
 
         self.particlePath      = PathPublisher(frameId, params["particlePathTopic"])
+        self.integrationPath   = PathPublisher(frameId, params["integrationPathTopic"])
 
     def run_filter(self):
         
@@ -96,6 +97,9 @@ class RobotSystem:
             self.particlePath.Clear()
             particleStates = self.filter.GetParticleStates()
             self.particlePath.PublishStates(particleStates)
+            
+            integrationState = self.filter.GetIntegrationState()
+            self.integrationPath.PublishState(integrationState)
 
             # print("Particles AFTER:")
             # [print(p) for p in particleStates]
