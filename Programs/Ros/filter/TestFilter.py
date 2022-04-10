@@ -6,9 +6,9 @@ import rospy
 from scipy.stats import multivariate_normal
 from scipy.spatial.transform import Rotation
 
-
 from system.RobotState import RobotState
 from utils.utils import *
+from utils.noiseUtils import *
 
 class TestFilter:
 
@@ -28,34 +28,60 @@ class TestFilter:
         initialMean       = initialState.GetMean()
         initialCovariance = initialState.GetCovariance()
 
-        self.Q = system.Q # Measuerment Covariance
-        self.LQ = np.linalg.cholesky(self.Q)
-        self.R = system.R # Wifi Noise
-        self.noisy = system.noisy # Flag to determine if noise is added
+        #TODO: What is this? store params in settings.yaml 
+        self.R = GetParam(params, "wifiErrorCovariance", 5) # Wifi Noise
+        self.noisy = False # Flag to determine if noise is added
 
         self.n = GetParam(params, "numParticles", 100)
 
         w = 1/self.n if self.n > 0 else 0
-        # self.p = system.p
         self.p_w = w*np.ones(self.n).reshape(self.n, 1)
-        L = np.linalg.cholesky(initialCovariance)[0:3, 0:3]
+
+        self.particleSensorNoise = SensorNoise(
+            accelerometerNoise = NormalNoise(mean = np.zeros(3), covariance = [1, 1, 0] * np.full(3, 7.61543504e-7)),
+            gyroNoise          = NormalNoise(mean = np.zeros(3), covariance = [1, 1, 0] * np.full(3, 2.0397832)),
+            rssiNoise          = NormalNoise(mean = [0], covariance = [10])
+        ) 
+
+        # Note: covariance can be zero if we know our initial position
+        #       Instead we scatter particles uniformly around the map
+        # L = np.linalg.cholesky(initialCovariance)[0:3, 0:3]
+        L = np.array([
+            self.wifiMap.GetWidth(),
+            self.wifiMap.GetHeight(),
+            self.wifiMap.GetDepth() 
+        ])
+
         self.p = []
         for i in range(self.n): 
-            #hardcoding for now...
-            self.p.append(
-                RobotState(
-                    position = ((L@np.random.randn(3, 1) + np.zeros((3, 1))).reshape(-1) + initialMean[0:3, 4]))
+            
+            particleState = RobotState(
+                position = L * np.random.uniform(size = 3),
+                velocity = initialState.GetVelocity(),
+                orientation = initialState.GetOrientation()
             )
 
-    
+            particleState.SetCovariance(initialCovariance)
+
+            self.p.append(particleState)
+
+    def GetParticleStates(self):
+        return self.p
+
+
     def prediction(self, sensorValue, deltaT):
         state = np.copy(self.state)
         covariance = self.state.GetCovariance()
 
         # simply propagate the state and assign identity to covariance
         for i in range(len(self.p)): 
+
             state = self.p[i]
-            self.p[i] = self.motionFunction(state, sensorValue, deltaT)
+
+            sensorNoise = self.particleSensorNoise.Sample()
+            self.p[i] = self.motionFunction(state, sensorValue + sensorNoise, deltaT)
+
+
         predictedCovariance = covariance
 
         # TODO: Update the mean values
@@ -82,9 +108,9 @@ class TestFilter:
 
     def correction(self, sensorValue, deltaT):
 
-        # NOTE: THIS IS PLACEHOLDER FOR DEBUGGING
-        self.state = self.motionFunction(self.state, sensorValue, deltaT)
-        return
+        # # NOTE: THIS IS PLACEHOLDER FOR DEBUGGING
+        # self.state = self.motionFunction(self.state, sensorValue, deltaT)
+        # return
 
         wifiMap = self.wifiMap
     
@@ -123,7 +149,15 @@ class TestFilter:
             u = r + (i-1)/self.n
             while u > W[j]: 
                 j = j + 1
-            self.p[i] = self.p[j]
+
+            # NOTE: jitter added to prevent particles from collapsing on each other  
+            # self.p[i] = self.p[j]
+            self.p[i] = RobotState(
+                position = self.p[j].GetPosition() + [.05, .05, 0] * np.random.randn(3), 
+                orientation = self.p[j].GetOrientation(), 
+                velocity = self.p[j].GetVelocity()
+            )
+
             self.p_w[i] = 1 / self.n
 
     def mean_variance(self): 

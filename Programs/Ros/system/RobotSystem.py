@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import rospy
 
 from system.RobotState import *
+from system.SensorValue import *
 
 from comm.PathPublisher import PathPublisher
 from comm.PoseWithCovariancePublisher import PoseWithCovariancePublisher
@@ -32,12 +33,13 @@ class RobotSystem:
         else:
             print("Plase provide a world!")
 
-        # load filter
-        filter_name = params['filter_name']
-        self.filter = filter_initialization(self.system, filter_name, params)
-
         # load data
         self.data_handler = DataHandler(self.system)
+
+        # load filter
+        # Warn: Needs to be loaded after data so datahandler can modify self.system  
+        filter_name = params['filter_name']
+        self.filter = filter_initialization(self.system, filter_name, params)
 
         # create Ros publishers
         frameId = params['frameId']
@@ -45,6 +47,8 @@ class RobotSystem:
         self.commandPath        = PathPublisher(frameId, params["command_path_topic"])
         self.predictedPath      = PathPublisher(frameId, params["path_topic"])
         self.poseWithCovariance = PoseWithCovariancePublisher(frameId, params["pose_topic"])
+
+        self.particlePath      = PathPublisher(frameId, params["particlePathTopic"])
 
     def run_filter(self):
         
@@ -55,17 +59,30 @@ class RobotSystem:
             if sample == False:
                 return 
 
-            # print("O_PRED:", self.filter.GetState())
+            lastState = self.filter.GetState()
+            # print("O_PRED:", lastState)
+            lastRotationMatrix = lastState.GetRotationMatrix()
+
+
+            # print("Particles BEFORE:")
+            # [print(p) for p in self.filter.GetParticleStates()]
+            # print("")
+
 
             # update model
-            # print(sample.groundTruthState.GetPosition())
             self.filter.prediction(sample.sensorValue, sample.deltaT)
             self.filter.correction(sample.sensorValue, sample.deltaT)
             
+            predictedState = self.filter.GetState()
+            correctedSensorValue = SensorValue.Copy(sample.sensorValue)
+            correctedSensorValue.linearAcceleration -= lastRotationMatrix @ self.system.accelerometerBias
+            correctedSensorValue.angularVelocity -= lastRotationMatrix @ self.system.gyroBias
+
             print("SENSOR:", sample.sensorValue)
+            print("CORRET:", correctedSensorValue)
             print("CMD:   ", sample.commandState)
             print("GT:    ", sample.groundTruthState)
-            print("N_PRED:", self.filter.GetState())
+            print("N_PRED:", predictedState)            
             print("")
 
             # Publish data to rviz
@@ -75,6 +92,14 @@ class RobotSystem:
 
             self.commandPath.PublishState(sample.commandState)
             self.groundTruthPath.PublishState(sample.groundTruthState)
+
+            self.particlePath.Clear()
+            particleStates = self.filter.GetParticleStates()
+            self.particlePath.PublishStates(particleStates)
+
+            # print("Particles AFTER:")
+            # [print(p) for p in particleStates]
+            # print("")
 
             # Delay until next state
             endLoopTime = rospy.get_rostime()

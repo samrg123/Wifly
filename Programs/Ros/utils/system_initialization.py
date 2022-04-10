@@ -27,11 +27,6 @@ class system_initialization:
         init_state_cov = np.diag(params['initial_state_variance'])
         self.initialState.SetCovariance(init_state_cov)
 
-        #TODO: What is this? store params in settings.yaml 
-        self.Q = 0.1*np.eye(3)
-        self.R = 3
-        self.noisy = False
-
     # Note: Really fast, but position update lags behind yielding poor results with real-world data 
     def StepWiseMotionFunction(self, state, sensorValue, deltaT):
 

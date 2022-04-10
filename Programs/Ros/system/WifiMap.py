@@ -8,19 +8,28 @@ from system.RobotState import RobotState
 class WifiMap:
 
     def __init__(self):
-        pass
+
+        # TODO: query this
+        self._width = 18.4
+        self._height = 13.75
+        self._depth = 0
+
+    def GetDepth(self):
+        return self._depth
+
+    def GetWidth(self):
+        return self._width
+
+    def GetHeight(self):
+        return self._height
+
+    class MockValue:
+        def __init__(self):
+            self.x = -1
+            self.y = -1
+            self.intensity = -100
 
     def QueryWifi(self, robotState):
-        
-        # TODO: placeholder until server is built
-        class MockValue:
-            def __init__(self):
-                self.x = -1
-                self.y = -1
-                self.intensity = -100
-
-        return MockValue()
-
         position = robotState.GetPosition()
         return intensity_query_client(gen_pt(position))
      

@@ -14,10 +14,31 @@ class SensorValue:
         self.angularVelocity = angularVelocity
         self.SetRssi(rssi)
 
+    @staticmethod
+    def Copy(value):
+        return SensorValue(
+            linearAcceleration  = value.GetLinearAcceleration(),
+            angularVelocity     = value.GetAngularVelocity(),
+            rssi                = value.GetRssi(),
+        )
+
+    def __add__(self, sensorValue):
+        return SensorValue(
+            linearAcceleration  = self.linearAcceleration + sensorValue.linearAcceleration,
+            angularVelocity     = self.angularVelocity    + sensorValue.angularVelocity,
+            rssi                = self._rssi + sensorValue._rssi,
+        )
+
+
+    def __radd__(self, sensorValue):
+        return self.__add__(sensorValue)
+
     def __mul__(self, x):
-        self.linearAcceleration*= x
-        self.angularVelocity*= x
-        return self
+        return SensorValue(
+            linearAcceleration  = self.linearAcceleration * sensorValue.linearAcceleration,
+            angularVelocity     = self.angularVelocity    * sensorValue.angularVelocity,
+            rssi                = self._rssi * sensorValue._rssi,
+        )
 
     def __rmul__(self, x):
         return self.__mul__(x)

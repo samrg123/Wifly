@@ -62,20 +62,26 @@ class DataHandler:
 
                 accelerationDirection = linearAcceleration / np.linalg.norm(linearAcceleration)
 
-                # TODO: THIS IS WRONG. ORIENTATION DOESN'T WORK WITH EULER DIRECTION...
-                #       NEED TO IMPLEMET LOOK AT FUNCTION OR SOMETHING SIMILAR
-                # xAxis = np.cross[0, 1, 0] 
-                print(accelerationDirection)
-                cosX = [1, 0, 0] @ accelerationDirection
-                cosY = [0, 1, 0] @ accelerationDirection
-                cosZ = [0, 0, 1] @ accelerationDirection
+                xAxis = [1, 0, 0]
+                cosTheta = xAxis @ accelerationDirection
+                if cosTheta == -1: 
+                    rotationMatrix = np.array([
+                        [-1, 0, 0,],
+                        [ 0, 1, 0,],
+                        [ 0, 0, 1,],
+                    ])
+
+                else:
+                    sinTheta = np.cross(xAxis, accelerationDirection)
+                    wedgeSinTheta = RobotState.WedgeSO3(sinTheta)
+                    rotationMatrix = np.eye(3) + wedgeSinTheta + wedgeSinTheta @ wedgeSinTheta / (1 + cosTheta) 
 
                 robotState = RobotState(
                     position = position,
                     velocity = velocity,
-                    orientation = sample.groundTruthState.GetOrientation()
-                    # orientation = np.arccos([cosX, cosY, cosZ ]) 
                 )
+                robotState.SetRotationMatrix(rotationMatrix)
+
                 robotStates = np.append(robotStates, robotState)
 
                 # TODO: Think of better way to compute velocity bias.
@@ -111,7 +117,5 @@ class DataHandler:
                   \taccelerometerBias: {system.accelerometerBias}\n\
                   \tInitialState: {system.initialState}\n\
                   }}")
-
-            # exit(0)
 
             self.dataSampler.Reset()
