@@ -3,7 +3,7 @@
 dataType: "simulated"
 pathDuration: 3
 pathRadius: 4
-numSamples: 1000
+numSamples: 100
 numStates: 4
 stateTransitionWidth: 1
 
@@ -72,7 +72,7 @@ sensorNoise: [
 
 ### Robot System ###
 filter_name: "TestFilter" 
-numParticles: 25
+numParticles: 100
 # numParticles: 1
 wifiErrorCovariance: 10
 
