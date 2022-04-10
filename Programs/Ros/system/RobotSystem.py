@@ -1,24 +1,18 @@
-import sys
-sys.path.append('.')
 import yaml
 import matplotlib.pyplot as plt
 
 import rospy
-from geometry_msgs.msg import PoseWithCovarianceStamped
 
 from system.RobotState import *
+
 from comm.PathPublisher import PathPublisher
 from comm.PoseWithCovariancePublisher import PoseWithCovariancePublisher
+
+from utils.utils import *
 from utils.DataHandler import *
 from utils.filter_initialization import filter_initialization
 from utils.system_initialization import system_initialization
-from utils.utils import *
 
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.join(os.path.abspath(__file__), '..', '..', '..', '..', 'wifly2'))))
-from scripts.intensity_client_test import gen_pt, intensity_query_client
-
-from system.SensorValue import SensorValue
 
 class RobotSystem:
 
@@ -39,17 +33,8 @@ class RobotSystem:
             print("Plase provide a world!")
 
         # load filter
-        init_state_vals = np.array(params['initial_state_vals'])
-        init_state = RobotState(
-            orientation = init_state_vals[0:3],
-            velocity    = init_state_vals[3:6],
-            position    = init_state_vals[6:9]
-        )
-        init_state_cov = np.diag(params['initial_state_variance'])
-        init_state.SetCovariance(init_state_cov)
-
         filter_name = params['filter_name']
-        self.filter = filter_initialization(self.system, init_state.GetMean(), init_state_cov, filter_name, params)
+        self.filter = filter_initialization(self.system, filter_name, params)
 
         # load data
         self.data_handler = DataHandler(self.system)
@@ -71,17 +56,17 @@ class RobotSystem:
                 return 
 
             # print("O_PRED:", self.filter.GetState())
-            # print("ACCEL: ", sample.sensorValue)
 
             # update model
             # print(sample.groundTruthState.GetPosition())
             self.filter.prediction(sample.sensorValue, sample.deltaT)
-            self.filter.correction(intensity_query_client(gen_pt(sample.groundTruthState.GetPosition())).intensity)
+            self.filter.correction(sample.sensorValue, sample.deltaT)
             
-            # print("N_PRED:", self.filter.GetState())
-            # print("CMD:   ", sample.commandState)
-            # print("GT:    ", sample.groundTruthState)
-            # print("")
+            print("SENSOR:", sample.sensorValue)
+            print("CMD:   ", sample.commandState)
+            print("GT:    ", sample.groundTruthState)
+            print("N_PRED:", self.filter.GetState())
+            print("")
 
             # Publish data to rviz
             esitmatedState = self.filter.GetState()

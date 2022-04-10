@@ -2,11 +2,7 @@ import numpy as np
 from scipy.linalg import block_diag
 from copy import deepcopy, copy
 import rospy
-# import rospack
-import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.join(os.path.abspath(__file__), '..', '..', '..', 'wifly2'))))
-# sys.path.append(rospkg.RosPack().get_path("wifly2"))
-from scripts.intensity_client_test import gen_pt, intensity_query_client
+
 from scipy.stats import multivariate_normal
 from scipy.spatial.transform import Rotation
 
@@ -16,35 +12,40 @@ from utils.utils import *
 
 class TestFilter:
 
-    def __init__(self, system, init, params):
+    #   system: system and noise models
+    #   init:   initial state mean and covariance
+    def __init__(self, system, params):
 
-        #   system: system and noise models
-        #   init:   initial state mean and covariance
         # self.motionFunction = system.StepWiseMotionFunction
         # self.motionFunction = system.ExpmMotionFunction
         self.motionFunction = system.GammaMotionFunction
+        
+        self.wifiMap = system.wifiMap
 
-        self.state = RobotState()
+        initialState = system.initialState
+        self.state = RobotState.Copy(initialState)
+
+        initialMean       = initialState.GetMean()
+        initialCovariance = initialState.GetCovariance()
 
         self.Q = system.Q # Measuerment Covariance
         self.LQ = np.linalg.cholesky(self.Q)
         self.R = system.R # Wifi Noise
         self.noisy = system.noisy # Flag to determine if noise is added
 
-        self.n = 100
+        self.n = GetParam(params, "numParticles", 100)
 
         w = 1/self.n if self.n > 0 else 0
         # self.p = system.p
         self.p_w = w*np.ones(self.n).reshape(self.n, 1)
-        L = np.linalg.cholesky(init.Sigma)[0:3, 0:3]
+        L = np.linalg.cholesky(initialCovariance)[0:3, 0:3]
         self.p = []
         for i in range(self.n): 
             #hardcoding for now...
-            self.p.append(RobotState(position=((L@np.random.randn(3, 1) + np.zeros((3, 1))).reshape(-1) + init.mu[0:3, 4])))
-
-        # init state
-        self.state.SetMean(init.mu)
-        self.state.SetCovariance(init.Sigma)
+            self.p.append(
+                RobotState(
+                    position = ((L@np.random.randn(3, 1) + np.zeros((3, 1))).reshape(-1) + initialMean[0:3, 4]))
+            )
 
     
     def prediction(self, sensorValue, deltaT):
@@ -79,16 +80,29 @@ class TestFilter:
     #     pt.y = pos[1]
     #     return pt
 
-    def correction(self, z):
+    def correction(self, sensorValue, deltaT):
 
+        # NOTE: THIS IS PLACEHOLDER FOR DEBUGGING
+        self.state = self.motionFunction(self.state, sensorValue, deltaT)
+        return
+
+        wifiMap = self.wifiMap
+    
+        rssi = sensorValue.GetRssi()
+        
         w = np.zeros((self.n, 1))
         for i in range(len(self.p)):
-            pos = self.p[i].GetPosition()
-            wifi = intensity_query_client(gen_pt(pos))
+            
+            particleState = self.p[i]
+             
+            wifi = wifiMap.QueryWifi(particleState)
+        
             if (wifi.x == -1 and wifi.y == -1) or wifi.occupied: 
                 w[i] = 0
                 continue
-            v = z - wifi.intensity
+            
+            v = rssi - wifi.intensity
+            
             w[i] = multivariate_normal.pdf(v, 0, self.R)
 
         if np.sum(w) != 0: 
@@ -117,7 +131,7 @@ class TestFilter:
         means = np.zeros((6, self.n))
         quats = np.zeros((4, self.n))
         mean = np.zeros((6))
-        quat = np.zeros((4))
+        quat = np.array([0., 0., 0., 1.]) 
 
         for s in range(len(self.p)): 
             pv = np.hstack((self.p[s].GetPosition(), self.p[s].GetVelocity()))

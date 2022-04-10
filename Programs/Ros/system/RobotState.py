@@ -34,6 +34,29 @@ class RobotState:
         np.copyto(self._positionCovariance, positionCovariance)
 
     @staticmethod
+    def MeanState(states):
+        
+        if len(states) == 0:
+            return RobotState()
+
+        rotationMatricies = [ state.GetRotationMatrix() for state in states ]
+        velocities        = [ state.GetVelocity() for state in states ]
+        positions         = [ state.GetPosition() for state in states ]
+        covariances       = [ state.GetCovariance() for state in states ]
+
+        rotations = Rotation.from_matrix(rotationMatricies)
+
+        r = RobotState(
+            position    = np.mean(positions),
+            velocity    = np.mean(velocities),
+            orientation = rotations.mean().as_euler("xyz")
+        )
+
+        r.SetCovariance(np.mean(covariances))
+
+        return r
+
+    @staticmethod
     def Copy(state):
         r = RobotState()
         np.copyto(r._mean, state._mean)

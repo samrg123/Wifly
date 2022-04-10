@@ -4,15 +4,30 @@ from scipy.linalg import expm, block_diag
 
 from utils.utils import *
 from system.RobotState import RobotState
+from system.SensorValue import SensorValue
+from system.WifiMap import WifiMap
 
 class system_initialization:
 
     def __init__(self, params):
 
+        self.wifiMap = WifiMap()
+
         self.gyroBias          = GetParam(params, "gyroBias",     np.zeros(3))
         self.velocityBias      = GetParam(params, "velocityBias", np.zeros(3))
         self.accelerometerBias = GetParam(params, "acclerometerBias", np.array([0, 0, gForceOfGravity]))
 
+        init_state_vals = np.array(params['initial_state_vals'])
+        self.initialState = RobotState(
+            orientation = init_state_vals[0:3],
+            velocity    = init_state_vals[3:6],
+            position    = init_state_vals[6:9]
+        )
+
+        init_state_cov = np.diag(params['initial_state_variance'])
+        self.initialState.SetCovariance(init_state_cov)
+
+        #TODO: What is this? store params in settings.yaml 
         self.Q = 0.1*np.eye(3)
         self.R = 3
         self.noisy = False
@@ -56,11 +71,67 @@ class system_initialization:
 
         return RobotState.FromMean(state.GetMean() @ expm( RobotState.Wedge(derivative * deltaT) ))
 
+    @staticmethod
+    def GammaRotationMatrix(oldState, deltaOrientation):
+
+        rotationMatrix = oldState.GetRotationMatrix()
+
+        return rotationMatrix @ expm(RobotState.WedgeSO3(deltaOrientation))
+
+    @staticmethod
+    def GammaDeltaOrientation(lastState, currentState):
+        
+        lastRotationMatrix    = lastState.GetRotationMatrix()
+        currentRotationMatrix = currentState.GetRotationMatrix()
+        
+        return RobotState.VeeSO3(logm(lastRotationMatrix.T @ currentRotationMatrix))
+
+    @staticmethod
+    def GammaLinearVelocity(oldState, deltaOrientation, deltaLinearVelocity):
+
+        rotationMatrix = oldState.GetRotationMatrix()
+        linearVelocity = oldState.GetVelocity()
+
+        return linearVelocity + \
+               rotationMatrix @ system_initialization.Gamma1(deltaOrientation) @ deltaLinearVelocity
+
+    @staticmethod
+    def GammaDeltaLinearVelocity(lastState, currentState, deltaOrientation):
+
+        lastRotationMatrix = lastState.GetRotationMatrix()
+
+        return np.linalg.inv(lastRotationMatrix @ system_initialization.Gamma1(deltaOrientation)) @ \
+               (currentState.GetVelocity() - lastState.GetVelocity())
+
+    def GammaPosition(self, oldState, deltaOrientation, deltaLinearVelocity, deltaT):
+        
+        position       = oldState.GetPosition()
+        rotationMatrix = oldState.GetRotationMatrix()
+        linearVelocity = oldState.GetVelocity()
+
+        deltaPosition = deltaT * (linearVelocity - rotationMatrix @ self.velocityBias)
+
+        return position + \
+               rotationMatrix @ deltaPosition + \
+               rotationMatrix @ system_initialization.Gamma2(deltaOrientation) @ deltaLinearVelocity * deltaT        
+
+    def GammaSensorValue(self, lastState, currentState, deltaT):
+  
+        deltaOrientation    = system_initialization.GammaDeltaOrientation(lastState, currentState)
+        deltaLinearVelocity = system_initialization.GammaDeltaLinearVelocity(lastState, currentState, deltaOrientation)
+
+        inverseDeltaT = 1./deltaT
+        lastRotationMatrix = lastState.GetRotationMatrix()
+
+        return SensorValue(
+            angularVelocity    = inverseDeltaT * deltaOrientation    + lastRotationMatrix @ self.gyroBias,
+            linearAcceleration = inverseDeltaT * deltaLinearVelocity + lastRotationMatrix @ self.accelerometerBias,
+            rssi               = self.wifiMap.QueryWifi(currentState).intensity
+        )
+
     # Note: Slowest, but uses second order taylor series. Correct integration for both position and velocity
     def GammaMotionFunction(self, state, sensorValue, deltaT):
 
-        position       = state.GetPosition()
-        linearVelocity = state.GetVelocity()
         rotationMatrix = state.GetRotationMatrix()
 
         angularVelocity    = sensorValue.GetAngularVelocity()
@@ -68,20 +139,12 @@ class system_initialization:
 
         deltaOrientation    = deltaT * (angularVelocity    - rotationMatrix @ self.gyroBias)
         deltaLinearVelocity = deltaT * (linearAcceleration - rotationMatrix @ self.accelerometerBias)
-        deltaPosition       = deltaT * (linearVelocity     - rotationMatrix @ self.velocityBias)
         
-        velocity = linearVelocity + \
-                   rotationMatrix @ self.Gamma1(deltaOrientation) @ deltaLinearVelocity
-
-        position = position + \
-                   rotationMatrix @ deltaPosition + \
-                   rotationMatrix @ self.Gamma2(deltaOrientation) @ deltaLinearVelocity*deltaT
-
         r = RobotState(
-            position = position,
-            velocity = velocity
+            velocity = self.GammaLinearVelocity(state, deltaOrientation, deltaLinearVelocity),
+            position = self.GammaPosition(state, deltaOrientation, deltaLinearVelocity, deltaT),
         )
-        r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3(deltaOrientation) ))
+        r.SetRotationMatrix(self.GammaRotationMatrix(state, deltaOrientation))
 
         return r
     

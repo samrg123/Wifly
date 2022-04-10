@@ -1,20 +1,63 @@
 
 ### Data Handler ###
 dataType: "simulated"
-deltaT: 0.1
+pathDuration: 3
+pathRadius: 2
 numSamples: 100
 numStates: 4
-velocityNorm: 1
-# stateTransitionWidth: 1.
+stateTransitionWidth: 1
 
-dataType: "log"
-# dataSensorValueLog: "../shubhamCircle4.log"
-dataSensorValueLog: "../deskCircle2.log"
-computeBiasSamples: 10
+# Simulated Motion Noise in world frame
+worldMotionNoise: [
+  [ 
+    [0, 0, 0], # velocity mean
+    [0, 0, 0], # velocity variance
+  ],         
+  [ 
+    [0, 0, 0], # orienation mean
+    [0, 0, 0], # orienation variance
+  ],
+]
+
+# Simulated Motion Noise in robot frame
+robotMotionNoise: [
+  [ 
+    [.001, .001, .001], # velocity mean
+    [0, 0, 0], # velocity variance
+  ],         
+  [ 
+    [0, 0, 0], # orienation mean
+    [.0005, .0005, .0005], # orienation variance
+  ],
+]
+
+# Simulated Sensor Noise in robot frame
+sensorNoise: [
+  [ 
+    [0, 0, 0], # gyroscope mean
+    [7.61543504e-7, 7.61543504e-7, 7.61543504e-7], # gyroscope variance - Note: datasheet says .05 deg/sec, this is in (radians/sec)^2
+  ],         
+  [ 
+    [0, 0, 0], # accelerometer mean
+    [2.0397832, 2.0397832, 2.0397832], # accelerometer variance - Note: datasheet says PSD = 400ug/sqrt(Hz) .. Variance ~2PSD*Bandlimit (bandlimit is 260Hz)
+  ],
+  [ 
+    [0], # rssi mean
+    [10], # rssi variance
+  ],  
+]
+
+# dataType: "log"
+# # dataSensorValueLog: "../shubhamCircle4.log"
+# # dataSensorValueLog: "../deskCircle1.log"
+# # dataSensorValueLog: "../mocap_20ms_1.log"
+# dataSensorValueLog: "../sampleData1.log"
+
+# computeBiasAndMeanSamples: 1
 
 ### Robot System ###
 filter_name: "TestFilter" 
-numParticles: 0
+numParticles: 100
 
 alphas_sqrt: [
   0,  0,  0, 
@@ -22,10 +65,16 @@ alphas_sqrt: [
 ]
 
 initial_state_vals: [
-  0, 0,  0, # orientation
-  0, 0,  0, # velocity
-  5, 6.5,  0  # position 
+  0, 0,   0, # orientation
+  0, 0,   0, # velocity
+  5, 6.5, 0  # position 
 ]
+
+# initial_state_vals: [
+#   0, 0,  1, # orientation
+#   0, 0,  0, # velocity
+#   0, 0,  0  # position 
+# ]
 
 # Note: in sqrt values
 initial_state_variance: [
@@ -35,7 +84,6 @@ initial_state_variance: [
 ] 
 
 ### path publisher ###
-# path_frame_id: "map"
 frameId: "map"
 gt_path_topic: "groundtruth/path"
 command_path_topic: "command/path"

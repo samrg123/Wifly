@@ -11,15 +11,12 @@ class myStruct:
 
 init = myStruct()
 
-def filter_initialization(sys, initialStateMean, initialStateCov, filter_name, params):
+def filter_initialization(system, filter_name, params):
 
     if filter_name == "TestFilter":
 
-        init.mu = initialStateMean
-        init.Sigma = initialStateCov
-    
         from filter.TestFilter import TestFilter
-        filter_ = TestFilter(sys, init, params)
+        filter_ = TestFilter(system, params)
     else:
 
         Panic(f"Unsupported filter {filter_name}")
