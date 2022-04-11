@@ -62,19 +62,19 @@ sensorNoise: [
 #   ],  
 # ]
 
-# dataType: "log"
-# # dataSensorValueLog: "../shubhamCircle4.log"
-# # dataSensorValueLog: "../deskCircle1.log"
-# # dataSensorValueLog: "../mocap_20ms_1.log"
-# # dataMocapLog: "../20ms_start479818817.csv"
+dataType: "log"
+# dataSensorValueLog: "../shubhamCircle4.log"
+# dataSensorValueLog: "../deskCircle1.log"
+dataSensorValueLog: "../mocap_20ms_1.log"
+dataMocapLog: "../20ms_start479818817.csv"
 # dataSensorValueLog: "../sampleData1.log"
 
-computeBiasAndMeanSamples: 0
+computeBiasAndMeanSamples: 20
 
 ### Robot System ###
 filter_name: "TestFilter" 
 # numParticles: 25
-numParticles: 50
+numParticles: 1
 wifiCovariance: 20
 
 alphas_sqrt: [

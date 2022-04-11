@@ -85,16 +85,6 @@ class RobotSystem:
             correctedSensorValue.linearAcceleration -= lastRotationMatrix @ self.system.accelerometerBias
             correctedSensorValue.angularVelocity -= lastRotationMatrix @ self.system.gyroBias
 
-            # print("DELTA: ", sample.deltaT)
-            # print("SENSOR:", sample.sensorValue)
-            # print("CORRET:", correctedSensorValue)
-            # print("CMD:   ", sample.commandState)
-            # print("GT:    ", sample.groundTruthState)
-            # print("N_PRED:", predictedState)            
-            # print("")
-
-            # exit(0)
-
 
             # Publish data to rviz
             esitmatedState = self.filter.GetState()
@@ -110,6 +100,17 @@ class RobotSystem:
             
             integrationState = self.filter.GetIntegrationState()
             self.integrationPath.PublishState(integrationState)
+
+
+            # print("DELTA: ", sample.deltaT)
+            # print("SENSOR:", sample.sensorValue)
+            # print("CORRET:", correctedSensorValue)
+            # print("CMD:   ", sample.commandState)
+            print("GT:    ", sample.groundTruthState)
+            print("N_PRED:", predictedState)
+            print("INT:   ", integrationState)
+            # print("")
+
 
             # print("Particles AFTER:")
             # [print(p) for p in particleStates]

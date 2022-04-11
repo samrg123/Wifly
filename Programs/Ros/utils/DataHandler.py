@@ -62,7 +62,7 @@ class DataHandler:
 
                 accelerationDirection = linearAcceleration / np.linalg.norm(linearAcceleration)
 
-                rotation, rmsDistance = Rotation.align_vectors([[0,0,1]], [accelerationDirection])
+                rotation, rmsDistance = Rotation.align_vectors([accelerationDirection], [[0, 0, 1]])
                 rotationMatrix = rotation.as_matrix()
 
                 robotState = RobotState(
