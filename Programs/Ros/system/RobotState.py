@@ -2,6 +2,9 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 import rospy
 import yaml
+
+from scipy.linalg import block_diag
+
 from utils.utils import *
 
 
@@ -33,11 +36,57 @@ class RobotState:
         np.copyto(self._velocityCovariance, velocityCovariance)
         np.copyto(self._positionCovariance, positionCovariance)
 
-    def __mul__(self, scaler):
-        return RobotState.FromMean(self._mean * scaler)
+    def __mul__(self, scalar):
+        r = RobotState(
+            position = self._position * scalar,
+            velocity = self._velocity * scalar,
+        )
+        r.SetCovariance(self._covariance * scalar)
 
-    def __rmul__(self, scaler):
-        return self.__mul__(scaler)
+        oldRotation = Rotation.from_matrix(self._rotationMatrix)
+        newRotation = Rotation.from_rotvec(oldRotation.as_rotvec() * scalar)
+        r.SetRotationMatrix(newRotation.as_matrix())
+
+        return r
+
+    def __rmul__(self, scalar):
+        return self.__mul__(scalar)
+
+    def __sub__(self, state):
+        
+        r = RobotState(
+            position = self._position - state._position,
+            velocity = self._velocity - state._velocity,
+        )
+        r.SetCovariance(self._covariance - state._covariance)
+        r.SetRotationMatrix(state._rotationMatrix.T @ self._rotationMatrix)
+
+        return r
+
+    def __add__(self, state):
+        
+        r = RobotState(
+            position = self._position + state._position,
+            velocity = self._velocity + state._velocity,
+        )
+        r.SetCovariance(self._covariance + state._covariance)
+        r.SetRotationMatrix(state._rotationMatrix @ self._rotationMatrix)
+
+        return r
+
+
+    # def __sub__(self, scaler):
+    #     return RobotState.FromMean(self._mean * scaler)
+
+
+    def GetAdjoint(self):
+
+        adj = block_diag(self._rotationMatrix, self._rotationMatrix, self._rotationMatrix)
+
+        adj[3:6,0:3] = self.WedgeSO3(self._velocity) @ self._rotationMatrix
+        adj[6:9,0:3] = self.WedgeSO3(self._position) @ self._rotationMatrix
+
+        return adj
 
     @staticmethod
     def MeanState(states, weights = None):
@@ -50,23 +99,28 @@ class RobotState:
         positions         = [ state._position       for state in states ]
         covariances       = [ state._covariance     for state in states ]
         
-        rotations = Rotation.from_matrix(rotationMatricies)
+        rotations       = Rotation.from_matrix(rotationMatricies)
+        meanRotation    = rotations.mean(weights = weights)
+        meanOrientation = meanRotation.as_euler("xyz")
 
-        meanRotation = rotations.mean(weights = weights)
         meanPosition = np.average(positions,  axis = 0, weights = weights)
         meanVelocity = np.average(velocities, axis = 0, weights = weights)
 
-        r = RobotState(
+        meanState = RobotState(
             position    = meanPosition,
             velocity    = meanVelocity,
-            orientation = meanRotation.as_euler("xyz")
+            orientation = meanOrientation
         )
+        
+        variancePosition    = np.average([ (state._position - meanPosition)**2           for state in states ], axis = 0, weights = weights)
+        varianceVelocity    = np.average([ (state._velocity - meanVelocity)**2           for state in states ], axis = 0, weights = weights)
+        varianceOrientation = np.average([ (state.GetOrientation() - meanOrientation)**2 for state in states ], axis = 0, weights = weights)
 
-        #TODO: is this computed right?  
-        meanCovariance = np.average(covariances, axis = 0, weights = weights)
-        r.SetCovariance(meanCovariance)
-
-        return r
+        meanState.SetPositionCovariance(np.diag(variancePosition))
+        meanState.SetVelocityCovariance(np.diag(varianceVelocity))
+        meanState.SetOrientationCovariance(np.diag(varianceOrientation))
+        
+        return meanState
 
     def SampleNeighborhood(self):
 
@@ -86,12 +140,6 @@ class RobotState:
         r.SetCovariance(self._covariance)
 
         return r
-
-        particleState = RobotState.FromMean(
-                
-            )
-
-        # return 
 
 
     @staticmethod

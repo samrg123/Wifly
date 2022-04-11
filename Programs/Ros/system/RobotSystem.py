@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 
 import rospy
 
+import numpy as np
+
 from system.RobotState import *
 from system.SensorValue import *
 
@@ -18,6 +20,10 @@ from utils.system_initialization import system_initialization
 class RobotSystem:
 
     def __init__(self, world=None):
+
+        # disable line-breaks while printing np arrays
+        np.set_printoptions(threshold=np.inf)
+        np.set_printoptions(linewidth=np.inf)
 
         rospy.init_node('robot_state_estimator', anonymous=True)
 
@@ -79,12 +85,16 @@ class RobotSystem:
             correctedSensorValue.linearAcceleration -= lastRotationMatrix @ self.system.accelerometerBias
             correctedSensorValue.angularVelocity -= lastRotationMatrix @ self.system.gyroBias
 
+            print("DELTA: ", sample.deltaT)
             print("SENSOR:", sample.sensorValue)
             print("CORRET:", correctedSensorValue)
             print("CMD:   ", sample.commandState)
             print("GT:    ", sample.groundTruthState)
             print("N_PRED:", predictedState)            
             print("")
+
+            # exit(0)
+
 
             # Publish data to rviz
             esitmatedState = self.filter.GetState()

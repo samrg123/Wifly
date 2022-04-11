@@ -27,6 +27,15 @@ class system_initialization:
         init_state_cov = np.diag(params['initial_state_variance'])
         self.initialState.SetCovariance(init_state_cov)
 
+        # TODO: Store position noise in robotMotionNoise model / yaml file?
+        robotMotionNoise = GetParam(params, "robotMotionNoise", np.zeros((2,2,3)))
+        self.motionNoiseDensity = np.hstack((
+            robotMotionNoise[1][1], # orientation
+            robotMotionNoise[0][1], # velocity
+            np.zeros(3)             # position 
+        ))
+
+
     # Note: Really fast, but position update lags behind yielding poor results with real-world data 
     def StepWiseMotionFunction(self, state, sensorValue, deltaT):
 
@@ -46,6 +55,7 @@ class system_initialization:
             position = position       + rotationMatrix @ deltaPosition
         )
         r.SetRotationMatrix(rotationMatrix @ expm( RobotState.WedgeSO3(deltaOrientation) ))
+        r.SetCovariance(state.GetCovariance())
 
         return r
 
@@ -64,7 +74,10 @@ class system_initialization:
             linearVelocity      - rotationMatrix @ self.velocityBias
         ))
 
-        return RobotState.FromMean(state.GetMean() @ expm( RobotState.Wedge(derivative * deltaT) ))
+        r = RobotState.FromMean(state.GetMean() @ expm( RobotState.Wedge(derivative * deltaT) ))
+        r.SetCovariance(state.GetCovariance())
+
+        return r
 
     @staticmethod
     def GammaRotationMatrix(oldState, deltaOrientation):
@@ -140,6 +153,21 @@ class system_initialization:
             position = self.GammaPosition(state, deltaOrientation, deltaLinearVelocity, deltaT),
         )
         r.SetRotationMatrix(self.GammaRotationMatrix(state, deltaOrientation))
+        
+        r.SetCovariance(state.GetCovariance())
+        
+        # TODO: GET THIS TO WORK!
+        # stateCovariance = state.GetCovariance()
+        # stateAdjoint = state.GetAdjoint()
+        # blockRotation = block_diag(rotationMatrix, rotationMatrix, rotationMatrix)
+        # covariance = stateCovariance + stateAdjoint @ self.motionNoiseDensity @ stateAdjoint.T
+        # covariance = stateCovariance + np.diag(self.motionNoiseDensity)
+    
+        # print("covariance")
+        # print(covariance)
+        # print("")
+        
+        # r.SetCovariance(covariance)
 
         return r
     

@@ -62,19 +62,8 @@ class DataHandler:
 
                 accelerationDirection = linearAcceleration / np.linalg.norm(linearAcceleration)
 
-                xAxis = [1, 0, 0]
-                cosTheta = xAxis @ accelerationDirection
-                if cosTheta == -1: 
-                    rotationMatrix = np.array([
-                        [-1, 0, 0,],
-                        [ 0, 1, 0,],
-                        [ 0, 0, 1,],
-                    ])
-
-                else:
-                    sinTheta = np.cross(xAxis, accelerationDirection)
-                    wedgeSinTheta = RobotState.WedgeSO3(sinTheta)
-                    rotationMatrix = np.eye(3) + wedgeSinTheta + wedgeSinTheta @ wedgeSinTheta / (1 + cosTheta) 
+                rotation, rmsDistance = Rotation.align_vectors([[0,0,1]], [accelerationDirection])
+                rotationMatrix = rotation.as_matrix()
 
                 robotState = RobotState(
                     position = position,
@@ -93,23 +82,12 @@ class DataHandler:
             # compute mean state
             system.initialState = RobotState.MeanState(robotStates)
             
-            meanPosition    = system.initialState.GetPosition() 
-            meanVelocity    = system.initialState.GetVelocity() 
-            meanOrientation = system.initialState.GetOrientation() 
-            
-            variancePosition    = np.mean([ (state.GetPosition() - meanPosition)**2 for state in robotStates ], axis = 0)
-            varianceVelocity    = np.mean([ (state.GetVelocity() - meanVelocity)**2 for state in robotStates ], axis = 0)
-            varianceOrientation = np.mean([ (state.GetOrientation() - meanOrientation)**2 for state in robotStates ], axis = 0)
-
-            system.initialState.SetPositionCovariance(np.diag(variancePosition))
-            system.initialState.SetVelocityCovariance(np.diag(varianceVelocity))
-            system.initialState.SetOrientationCovariance(np.diag(varianceOrientation))
-
             rotationMatrix = system.initialState.GetRotationMatrix()
             
+            # TODO: Make a function that can track bias over time?
             system.gyroBias          = rotationMatrix.T @ (normailzer * system.gyroBias) 
             system.velocityBias      = rotationMatrix.T @ (normailzer * system.velocityBias)
-            system.accelerometerBias = rotationMatrix.T @ (normailzer * system.accelerometerBias)
+            system.accelerometerBias = rotationMatrix.T @ (normailzer * system.accelerometerBias) 
 
             Log(f"Computed Biases and Mean ({computeBiasAndMeanSamples} samples) {{\n\
                   \tgyroBias: {system.gyroBias}\n\

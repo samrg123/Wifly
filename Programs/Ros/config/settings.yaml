@@ -22,8 +22,8 @@ worldMotionNoise: [
 # Simulated Motion Noise in robot frame
 robotMotionNoise: [
   [ 
-    [.001, .001, 0], # velocity mean
-    [0, 0, 0], # velocity variance
+    [.001, .001, 0], # velocity variance
+    [0, 0, 0],       # velocity mean
   ],         
   [ 
     [0, 0, 0], # orienation mean
@@ -39,7 +39,7 @@ sensorNoise: [
   ],         
   [ 
     [0, 0, 0], # accelerometer mean
-    [20.0397832, 20.0397832, 0], # accelerometer variance - Note: datasheet says PSD = 400ug/sqrt(Hz) .. Variance ~2PSD*Bandlimit (bandlimit is 260Hz)
+    [40.0397832, 40.0397832, 0], # accelerometer variance - Note: datasheet says PSD = 400ug/sqrt(Hz) .. Variance ~2PSD*Bandlimit (bandlimit is 260Hz)
   ],
   [ 
     [0], # rssi mean
@@ -62,19 +62,20 @@ sensorNoise: [
 #   ],  
 # ]
 
-# dataType: "log"
-# # dataSensorValueLog: "../shubhamCircle4.log"
-# # dataSensorValueLog: "../deskCircle1.log"
-# # dataSensorValueLog: "../mocap_20ms_1.log"
+dataType: "log"
+# dataSensorValueLog: "../shubhamCircle4.log"
+# dataSensorValueLog: "../deskCircle1.log"
+dataSensorValueLog: "../mocap_20ms_1.log"
+dataMocapLog: "../20ms_start479818817.csv"
 # dataSensorValueLog: "../sampleData1.log"
 
-# computeBiasAndMeanSamples: 0
+computeBiasAndMeanSamples: 100
 
 ### Robot System ###
 filter_name: "TestFilter" 
-numParticles: 100
-# numParticles: 1
-wifiErrorCovariance: 10
+# numParticles: 25
+numParticles: 1
+wifiCovariance: 10
 
 alphas_sqrt: [
   0,  0,  0, 
@@ -90,7 +91,7 @@ alphas_sqrt: [
 initial_state_vals: [
   0, 0,   0, # orientation
   0, 0,   0, # velocity
-  10, 4, 0  # position 
+  21, 12, 0  # position 
 ]
 
 # initial_state_vals: [
@@ -101,9 +102,9 @@ initial_state_vals: [
 
 # Note: in sqrt values
 initial_state_variance: [
-  0, 0, .1, # orientation
-  1, 1, 0, # velocity
-  1, 1, 0  # position 
+  0, 0, .01, # orientation
+  .08, .08, 0, # velocity
+  .08, .08, 0  # position 
 ] 
 
 ### path publisher ###

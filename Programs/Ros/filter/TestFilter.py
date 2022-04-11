@@ -29,10 +29,10 @@ class TestFilter:
         initialMean       = initialState.GetMean()
         initialCovariance = initialState.GetCovariance()
 
-        #TODO: What is this? store params in settings.yaml 
-        self.R = GetParam(params, "wifiErrorCovariance", 5)
+        self.wifiCovariance = GetParam(params, "wifiCovariance", 5)
         self.n = GetParam(params, "numParticles", 100)
 
+        # TODO: Compute this from initial covariance
         w = 1/self.n if self.n > 0 else 0
         self.p_w = w * np.ones(self.n)
 
@@ -40,7 +40,7 @@ class TestFilter:
             # gyroNoise          = NormalNoise(mean = np.zeros(3), covariance = [0, 0, 1] * np.full(3, 7.61543504e-7)),
             # accelerometerNoise = NormalNoise(mean = np.zeros(3), covari
             gyroNoise          = NormalNoise(mean = np.zeros(3), covariance = [0, 0, 1] * np.full(3, .5)),
-            accelerometerNoise = NormalNoise(mean = np.zeros(3), covariance = [1, 1, 0] * np.full(3, 20.0397832)),
+            accelerometerNoise = NormalNoise(mean = np.zeros(3), covariance = [1, 1, 0] * np.full(3, 40.0397832)),
             rssiNoise          = NormalNoise(mean = [0], covariance = [10])
         ) 
 
@@ -57,42 +57,15 @@ class TestFilter:
 
     def prediction(self, sensorValue, deltaT):
 
-        covariance = self.state.GetCovariance()
-
         self.p[0] = self.motionFunction(self.p[0], sensorValue, deltaT)
 
         # simply propagate the state and assign identity to covariance
         for i in range(1, self.n): 
-
             state = self.p[i]
             sensorNoise = self.particleSensorNoise.Sample()
             self.p[i] = self.motionFunction(state, sensorValue + sensorNoise, deltaT)
 
-        predictedCovariance = covariance
-
         self.integrationState = self.motionFunction(self.integrationState, sensorValue, deltaT)
-
-        # TODO: Update the mean values
-        # self.state.SetMean(np.mean(self.p))
-        # self.state.SetMean(predictedState.GetMean())
-        # self.state.SetCovariance(predictedCovariance)
-
-    # def intensity_query_client(pos): 
-    #     rospy.wait_for_service("intensity")
-    #     try: 
-    #         intensity_serv = rospy.ServiceProxy("intensity", intensity)
-    #         intensity_val = intensity_serv(pos)
-    #         print(intensity_val)
-    #         return intensity_val
-    #     except rospy.ServiceException as e: 
-    #         print(f"Exception {e} occurred")
-
-
-    # def gen_pt(pos):
-    #     pt = Point()
-    #     pt.x = pos[0]
-    #     pt.y = pos[1]
-    #     return pt
 
     def correction(self, sensorValue, deltaT):
 
@@ -110,9 +83,10 @@ class TestFilter:
             #     w[i] = 0
             #     continue
             
-            v = rssi - wifi.intensity
+            inovation = rssi - wifi.intensity
             
-            w[i] = multivariate_normal.pdf(v, 0, self.R)
+            # TODO: store mean parameter in yaml
+            w[i] = multivariate_normal.pdf(inovation, 0, self.wifiCovariance)
 
         if np.sum(w) != 0: 
             self.p_w = self.p_w * w
@@ -121,8 +95,7 @@ class TestFilter:
         self.Neff = 1/np.sum(self.p_w * self.p_w)
         if self.Neff < (.2 * self.n): 
             self.resampling()
-
-        self.p_w = self.p_w/np.sum(self.p_w)
+            self.p_w = self.p_w/np.sum(self.p_w)
 
         self.state = RobotState.MeanState(self.p, self.p_w)
         # self.mean_variance()
@@ -137,7 +110,8 @@ class TestFilter:
             while u > W[j]: 
                 j = j + 1
 
-            self.p[i] = RobotState.Copy(self.p[j])
+            self.p[i] = self.p[j].SampleNeighborhood()
+            # self.p[i] = RobotState.Copy(self.p[j])
 
             self.p_w[i] = 1 / self.n
 
