@@ -7,9 +7,9 @@ class NormalNoise:
     
     def __init__(self, mean = np.zeros(3), covariance = np.diag(np.ones(3))):
         
-        self.mean = mean
+        self.mean = np.asarray(mean, dtype="float")
 
-        covariance = np.asarray(covariance)
+        covariance = np.asarray(covariance, dtype="float")
 
         if covariance.size == len(mean): 
             self.covariance = np.diag(covariance)

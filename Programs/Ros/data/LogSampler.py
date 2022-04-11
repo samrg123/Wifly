@@ -176,13 +176,20 @@ class LogSampler:
 
     def LoadSamples(self):
 
-        self.LoadSensorValues(self.sensorValueFileName)
-        self.LoadMocapSamples(self.mocapFileName)
+        if self.sensorValueFileName is not None:
+            self.LoadSensorValues(self.sensorValueFileName)
+        else:
+            self.sensorValues = None
+
+        if self.mocapFileName is not None:
+            self.LoadMocapSamples(self.mocapFileName)
+        else:
+            self.groundTruthStates = None
         
     def GetSample(self):
 
         # Get Sensor Sample
-        if self.sensorIndex >= len(self.sensorValues):
+        if self.sensorValues is None or self.sensorIndex >= len(self.sensorValues):
             return False
 
         sensorValue = self.sensorValues[self.sensorIndex]
@@ -196,34 +203,39 @@ class LogSampler:
         self.sensorIndex+= 1
         self.sensorTime+= deltaT
 
-        if self.groundTruthIndex >= len(self.groundTruthStates):
-            return False
+        if self.groundTruthStates is None:
+            groundTruthState = RobotState()
         
-        groundTruth1 = self.groundTruthStates[self.groundTruthIndex]
-        groundTruth2 = groundTruth1
-        
-        # Find first groundTruth pair that spans sensorValue
-        self.groundTruthIndex+= 1
-        while self.groundTruthTime < self.sensorTime and \
-              self.groundTruthIndex < len(self.groundTruthStates): 
-
-            groundTruth1 = groundTruth2
-            groundTruth2 = self.groundTruthStates[self.groundTruthIndex]
-
-            self.groundTruthIndex+= 1
-            self.groundTruthTime+= (groundTruth2.timestamp - groundTruth1.timestamp)
-                    
-
-        if groundTruth1.timestamp == groundTruth2.timestamp:
-            groundTruthState = groundTruth1
-
         else:
 
-            # interpolate groundTruthState
-            t = np.clip(0, 1, (self.groundTruthTime - self.sensorTime) / (groundTruth2.timestamp - groundTruth1.timestamp))
-            # groundTruthState = t * (groundTruth2 - groundTruth1) + groundTruth1
-            groundTruthState = groundTruth1
+            if self.groundTruthIndex >= len(self.groundTruthStates):
+                return False
             
+            groundTruth1 = self.groundTruthStates[self.groundTruthIndex]
+            groundTruth2 = groundTruth1
+            
+            # Find first groundTruth pair that spans sensorValue
+            self.groundTruthIndex+= 1
+            while self.groundTruthTime < self.sensorTime and \
+                self.groundTruthIndex < len(self.groundTruthStates): 
+
+                groundTruth1 = groundTruth2
+                groundTruth2 = self.groundTruthStates[self.groundTruthIndex]
+
+                self.groundTruthIndex+= 1
+                self.groundTruthTime+= (groundTruth2.timestamp - groundTruth1.timestamp)
+                        
+
+            if groundTruth1.timestamp == groundTruth2.timestamp:
+                groundTruthState = groundTruth1
+
+            else:
+
+                # interpolate groundTruthState
+                t = np.clip(0, 1, (self.groundTruthTime - self.sensorTime) / (groundTruth2.timestamp - groundTruth1.timestamp))
+                # groundTruthState = t * (groundTruth2 - groundTruth1) + groundTruth1
+                groundTruthState = groundTruth1
+                
         sample = DataSample(
             deltaT = deltaT,
             sensorValue = sensorValue,

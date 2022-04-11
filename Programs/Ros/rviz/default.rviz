@@ -71,7 +71,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 25; 255; 0
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -90,7 +90,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /command/path
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: map
@@ -266,7 +266,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 14.809233665466309
+      Distance: 32.14028549194336
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -274,17 +274,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.373242735862732
-        Y: 1.6716341972351074
-        Z: 1.1360926628112793
+        X: 25.186233520507812
+        Y: 22.077655792236328
+        Z: 0.9149701595306396
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.40479642152786255
+      Pitch: 1.5697963237762451
       Target Frame: map
-      Yaw: 4.5514750480651855
+      Yaw: 4.716472148895264
     Saved: ~
 Window Geometry:
   Displays:
@@ -302,5 +302,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1920
-  X: 1920
+  X: 0
   Y: 30

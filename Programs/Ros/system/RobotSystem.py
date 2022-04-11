@@ -85,13 +85,13 @@ class RobotSystem:
             correctedSensorValue.linearAcceleration -= lastRotationMatrix @ self.system.accelerometerBias
             correctedSensorValue.angularVelocity -= lastRotationMatrix @ self.system.gyroBias
 
-            print("DELTA: ", sample.deltaT)
-            print("SENSOR:", sample.sensorValue)
-            print("CORRET:", correctedSensorValue)
-            print("CMD:   ", sample.commandState)
-            print("GT:    ", sample.groundTruthState)
-            print("N_PRED:", predictedState)            
-            print("")
+            # print("DELTA: ", sample.deltaT)
+            # print("SENSOR:", sample.sensorValue)
+            # print("CORRET:", correctedSensorValue)
+            # print("CMD:   ", sample.commandState)
+            # print("GT:    ", sample.groundTruthState)
+            # print("N_PRED:", predictedState)            
+            # print("")
 
             # exit(0)
 

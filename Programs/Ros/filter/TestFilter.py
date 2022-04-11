@@ -36,12 +36,12 @@ class TestFilter:
         w = 1/self.n if self.n > 0 else 0
         self.p_w = w * np.ones(self.n)
 
+
+        # TODO: pull this from settings.yalm / sensorNoise variable... should be stored in system
         self.particleSensorNoise = SensorNoise(
-            # gyroNoise          = NormalNoise(mean = np.zeros(3), covariance = [0, 0, 1] * np.full(3, 7.61543504e-7)),
-            # accelerometerNoise = NormalNoise(mean = np.zeros(3), covari
-            gyroNoise          = NormalNoise(mean = np.zeros(3), covariance = [0, 0, 1] * np.full(3, .5)),
-            accelerometerNoise = NormalNoise(mean = np.zeros(3), covariance = [1, 1, 0] * np.full(3, 40.0397832)),
-            rssiNoise          = NormalNoise(mean = [0], covariance = [10])
+            gyroNoise          = NormalNoise(mean = -np.array([0, 0,  -.5]), covariance = [0, 0, .05]),
+            accelerometerNoise = NormalNoise(mean = -np.array([-5, -10, 0]), covariance = [15.0397832, 15.0397832, 0]),
+            rssiNoise          = NormalNoise(mean = [0], covariance = [self.wifiCovariance])
         ) 
 
         self.p = [ RobotState.Copy(initialState) ]
