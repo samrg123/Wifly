@@ -11,9 +11,10 @@ class NormalNoise:
 
         covariance = np.asarray(covariance, dtype="float")
 
-        if covariance.size == len(mean): 
-            self.covariance = np.diag(covariance)
-        elif covariance.size == len(mean)**2: 
+        n = len(mean)
+        if covariance.size == n: 
+            self.covariance = np.diag(covariance).reshape(n, n)
+        elif covariance.size == n**2: 
             self.covariance = covariance
         else:
             Panic(f"Unsupported covariance size: {covariance.size} | meanLen: {len(mean)}")

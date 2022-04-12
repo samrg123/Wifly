@@ -82,6 +82,9 @@ class TestFilter:
             #     continue
             
             inovation = rssi - wifi.intensity
+
+            print("rssi: ", rssi)
+            print("pRSSI:", wifi.intensity)
             
             # TODO: store mean parameter in yaml
             w[i] = multivariate_normal.pdf(inovation, 0, self.wifiCovariance)

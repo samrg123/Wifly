@@ -103,7 +103,7 @@ class RobotSystem:
 
 
             # print("DELTA: ", sample.deltaT)
-            # print("SENSOR:", sample.sensorValue)
+            print("SENSOR:", sample.sensorValue)
             # print("CORRET:", correctedSensorValue)
             # print("CMD:   ", sample.commandState)
             print("GT:    ", sample.groundTruthState)

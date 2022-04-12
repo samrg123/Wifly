@@ -6,6 +6,8 @@ from data.DataSample import DataSample
 from system.RobotState import RobotState
 from system.SensorValue import SensorValue
 
+from system.WifiMap import WifiMap
+
 import csv
 
 class LogSampler:
@@ -193,6 +195,19 @@ class LogSampler:
             self.LoadMocapSamples(self.mocapFileName)
         else:
             self.groundTruthStates = None
+
+        if self.groundTruthStates is not None and \
+           self.sensorValues is not None:
+
+            dataSamples = np.array([])
+            while True:
+                dataSample = self.GetSample()
+                if dataSample == False:
+                    break
+
+                dataSamples = np.append(dataSamples, dataSample)
+            self.Reset()
+            self.system.wifiMap = WifiMap.FromDataSamples(dataSamples)
         
     def GetSample(self):
 
