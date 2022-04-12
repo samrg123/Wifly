@@ -22,7 +22,7 @@ class DataHandler:
 
         elif dataType == "log":
             
-            self.dataSampler = LogSampler(params)
+            self.dataSampler = LogSampler(params, system)
         
         elif dataType == "streamed":
             Panic("Not Implemented")
@@ -50,7 +50,7 @@ class DataHandler:
                 position = sample.groundTruthState.GetPosition()
                 velocity = sample.groundTruthState.GetVelocity()
 
-                # NOTE: We currently use sensor values to estimate orienation and bias. 
+                # NOTE: We currently use sensor values to estimate orientation and bias. 
                 #       This is really just a hack to average real world data samples into something usable
                 # TODO: comparing these values with ground truth values once we get real world data
 
@@ -60,16 +60,27 @@ class DataHandler:
                 system.gyroBias+= angularVelocity
                 system.accelerometerBias+= linearAcceleration
 
-                accelerationDirection = linearAcceleration / np.linalg.norm(linearAcceleration)
+                if system.constrainZAxis:
 
-                rotation, rmsDistance = Rotation.align_vectors([accelerationDirection], [[0, 0, 1]])
-                rotationMatrix = rotation.as_matrix()
+                    # Note: can't infer orientation dirction, becuase sensed accelerationDirection won't point down due to noise
+                    #       Just use the ground truth values instead
+                    robotState = RobotState(
+                        position = position,
+                        velocity = velocity,
+                        orientation = sample.groundTruthState.GetOrientation()
+                    )
 
-                robotState = RobotState(
-                    position = position,
-                    velocity = velocity,
-                )
-                robotState.SetRotationMatrix(rotationMatrix)
+                else:
+                    accelerationDirection = linearAcceleration / np.linalg.norm(linearAcceleration)
+
+                    rotation, rmsDistance = Rotation.align_vectors([accelerationDirection], [[0, 0, 1]])
+                    rotationMatrix = rotation.as_matrix()
+
+                    robotState = RobotState(
+                        position = position,
+                        velocity = velocity,
+                    )
+                    robotState.SetRotationMatrix(rotationMatrix)
 
                 robotStates = np.append(robotStates, robotState)
 

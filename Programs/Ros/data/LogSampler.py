@@ -10,26 +10,31 @@ import csv
 
 class LogSampler:
     
-    def __init__(self, params):
-
-        self.Reset()
+    def __init__(self, params, system):
 
         self.params = params
+        self.system = system
 
+        self.mocapTimeOffset = GetParam(params, "dataMocapTimeOffset", 0) 
+        
         self.mocapFileName       = GetParam(params, "dataMocapLog") 
         self.sensorValueFileName = GetParam(params, "dataSensorValueLog") 
         self.serverMsgPrefix     = GetParam(params, "serverMsgPrefix", "<- ")
+
+        self.Reset()
 
     def Reset(self):
         self.sensorIndex = 0
         self.groundTruthIndex = 0
 
         self.sensorTime = 0
-        self.groundTruthTime = 0
+        self.groundTruthTime = -self.mocapTimeOffset
 
     def LoadMocapSamples(self, path):
 
         self.groundTruthStates = []
+
+        vectorConstraint, orientationConstraint = self.system.GetConstraints()
 
         with open(path, newline='') as file:
             csvReader = csv.reader(file, delimiter = ',')
@@ -47,12 +52,13 @@ class LogSampler:
                 velocity = np.zeros(3)
 
                 state = RobotState(
-                    position = position,
-                    velocity = velocity
+                    position = position * vectorConstraint,
+                    velocity = velocity * vectorConstraint
                 )
 
                 state.timestamp = timestamp
-                rotationMatrix = Rotation.from_quat(quaternion).as_matrix()
+                roationAngles = Rotation.from_quat(quaternion).as_euler("xyz") * orientationConstraint
+                rotationMatrix = Rotation.from_euler("xyz", roationAngles).as_matrix()
                 state.SetRotationMatrix(rotationMatrix)
 
                 self.groundTruthStates = np.append(self.groundTruthStates, state)
@@ -66,6 +72,8 @@ class LogSampler:
         serverMsgPrefixLen = len(serverMsgPrefix)
 
         self.sensorValues = []
+
+        vectorConstraint, orientationConstraint = self.system.GetConstraints()
 
         rssi = None
         timestamp = None
@@ -97,8 +105,8 @@ class LogSampler:
                     if lastTimestamp != timestamp:                                
                         
                         sensorValue = SensorValue(
-                            linearAcceleration = linearAcceleration,
-                            angularVelocity = angularVelocity,
+                            linearAcceleration = linearAcceleration * vectorConstraint,
+                            angularVelocity    = angularVelocity * orientationConstraint,
                             rssi = rssi
                         )
                         

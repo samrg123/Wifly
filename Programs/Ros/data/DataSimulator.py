@@ -16,24 +16,10 @@ class DataSimulator:
         self.params = params
         self.system = system
 
-        worldMotionNoiseVals = GetParam(params, "worldMotionNoise", np.zeros((2,2,3)))
-        self.worldMotionNoise = MotionNoise(
-            NormalNoise(worldMotionNoiseVals[0][0], worldMotionNoiseVals[0][1]),
-            NormalNoise(worldMotionNoiseVals[1][0], worldMotionNoiseVals[1][1])
-        )
-
-        robotMotionNoiseVals = GetParam(params, "robotMotionNoise", np.zeros((2,2,3)))
-        self.robotMotionNoise = MotionNoise(
-            NormalNoise(robotMotionNoiseVals[0][0], robotMotionNoiseVals[0][1]),
-            NormalNoise(robotMotionNoiseVals[1][0], robotMotionNoiseVals[1][1])
-        )
-
-        sensorNoiseVals = GetParam(params, "sensorNoise", np.zeros((3,2,3)))
-        self.sensorNoise = SensorNoise(
-            NormalNoise(sensorNoiseVals[0][0], sensorNoiseVals[0][1]),
-            NormalNoise(sensorNoiseVals[1][0], sensorNoiseVals[1][1]),
-            NormalNoise(sensorNoiseVals[2][0], sensorNoiseVals[2][1]),
-        )
+        self.worldMotionNoise = system.worldMotionNoise
+        self.robotMotionNoise = system.robotMotionNoise
+        
+        self.sensorNoise = system.sensorNoise
 
         self.pathDuration = GetParam(params, "pathDuration", 3) 
         self.pathRadius   = GetParam(params, "pathRadius", 1) 
@@ -134,6 +120,7 @@ class DataSimulator:
                 position    = self.system.GammaPosition(lastNoiseyState, deltaNoisyOrientation, deltaNoisyVelocity, self.deltaT),
                 velocity    = self.system.GammaLinearVelocity(lastNoiseyState, deltaNoisyOrientation, deltaNoisyVelocity),
             )
+
             noisyState.SetRotationMatrix(self.system.GammaRotationMatrix(lastNoiseyState, deltaNoisyOrientation))
 
             lastCommandSate = commandState

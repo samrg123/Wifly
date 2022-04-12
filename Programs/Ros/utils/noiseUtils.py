@@ -18,18 +18,25 @@ class NormalNoise:
         else:
             Panic(f"Unsupported covariance size: {covariance.size} | meanLen: {len(mean)}")
 
+    def __str__(self):
+        return f"NormalNoise {{\nMean: {self.mean}\nCovariance:\n{self.covariance}\n}}"
+
     @staticmethod
-    def Zero():
-        return NormalNoise(np.zeros(3), np.zeros((3, 3)))
+    def Zero(size = 3):
+        return NormalNoise(np.zeros(size), np.zeros((size, size)))
 
     def Sample(self):
         return gRng.multivariate_normal(self.mean, self.covariance)
 
 class MotionNoise:
 
-    def __init__(self, velocityNoise = NormalNoise.Zero(), orientationNoise = NormalNoise.Zero()):
+    def __init__(self, 
+                 velocityNoise    = NormalNoise.Zero(), 
+                 orientationNoise = NormalNoise.Zero(),
+                 positionNoise    = NormalNoise.Zero()):
 
-        self.velocityNoise = velocityNoise
+        self.positionNoise    = positionNoise
+        self.velocityNoise    = velocityNoise
         self.orientationNoise = orientationNoise
  
 class SensorNoise:

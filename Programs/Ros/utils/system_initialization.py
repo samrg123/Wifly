@@ -3,6 +3,8 @@ import numpy as np
 from scipy.linalg import expm, block_diag
 
 from utils.utils import *
+from utils.noiseUtils import *
+
 from system.RobotState import RobotState
 from system.SensorValue import SensorValue
 from system.WifiMap import WifiMap
@@ -17,24 +19,72 @@ class system_initialization:
         self.velocityBias      = GetParam(params, "velocityBias", np.zeros(3))
         self.accelerometerBias = GetParam(params, "acclerometerBias", np.array([0, 0, gForceOfGravity]))
 
+        self.constrainZAxis = GetParam(params, "constrainZAxis", False)
+
+        vectorMultiplier, orientationMultiplier = self.GetConstraints()
+
         init_state_vals = np.array(params['initial_state_vals'])
         self.initialState = RobotState(
-            orientation = init_state_vals[0:3],
-            velocity    = init_state_vals[3:6],
-            position    = init_state_vals[6:9]
+            orientation = init_state_vals[0:3] * orientationMultiplier,
+            velocity    = init_state_vals[3:6] * vectorMultiplier,
+            position    = init_state_vals[6:9] * vectorMultiplier
         )
 
         init_state_cov = np.diag(params['initial_state_variance'])
         self.initialState.SetCovariance(init_state_cov)
 
-        # TODO: Store position noise in robotMotionNoise model / yaml file?
-        robotMotionNoise = GetParam(params, "robotMotionNoise", np.zeros((2,2,3)))
-        self.motionNoiseDensity = np.hstack((
-            robotMotionNoise[1][1], # orientation
-            robotMotionNoise[0][1], # velocity
-            np.zeros(3)             # position 
-        ))
+        self.worldMotionNoise = self.LoadMotionNoise(
+            GetParam(params, "worldMotionNoise", np.zeros((2,2,3)))
+        )
 
+        self.robotMotionNoise = self.LoadMotionNoise(
+            GetParam(params, "robotMotionNoise", np.zeros((2,2,3)))
+        )
+
+        self.sensorNoise = self.LoadSensorNoise(
+            GetParam(params, "sensorNoise", np.zeros((2,2,3)))
+        )
+
+
+    def GetConstraints(self):
+
+        if self.constrainZAxis:
+            vectorMultiplier      = np.array([1, 1, 0], dtype="float")
+            orientationMultiplier = np.array([0, 0, 1], dtype="float")
+        else:
+            vectorMultiplier      = np.array([1, 1, 1], dtype="float")
+            orientationMultiplier = np.array([1, 1, 1], dtype="float")        
+
+        return vectorMultiplier, orientationMultiplier
+
+    def LoadMotionNoise(self, values):
+        
+        vectorMultiplier, orientationMultiplier = self.GetConstraints()
+
+        velocityNoise    = NormalNoise(values[0][0] * vectorMultiplier,      values[0][1] * vectorMultiplier)
+        orientationNoise = NormalNoise(values[1][0] * orientationMultiplier, values[1][1] * orientationMultiplier)
+        positionNoise    = NormalNoise.Zero()
+
+        return MotionNoise(
+            velocityNoise    = velocityNoise,
+            orientationNoise = orientationNoise,
+            positionNoise    = positionNoise, 
+        )
+
+
+    def LoadSensorNoise(self, values):
+
+        vectorMultiplier, orientationMultiplier = self.GetConstraints()
+
+        gyroNoise          = NormalNoise(values[0][0] * orientationMultiplier, values[0][1] * orientationMultiplier)  
+        accelerometerNoise = NormalNoise(values[1][0] * vectorMultiplier,      values[1][1] * vectorMultiplier)
+        rssiNoise          = NormalNoise(values[2][0],                         values[2][1])
+        
+        return SensorNoise(
+            gyroNoise          = gyroNoise,
+            accelerometerNoise = accelerometerNoise,
+            rssiNoise          = rssiNoise,
+        )
 
     # Note: Really fast, but position update lags behind yielding poor results with real-world data 
     def StepWiseMotionFunction(self, state, sensorValue, deltaT):
@@ -83,7 +133,6 @@ class system_initialization:
     def GammaRotationMatrix(oldState, deltaOrientation):
 
         rotationMatrix = oldState.GetRotationMatrix()
-
         return rotationMatrix @ expm(RobotState.WedgeSO3(deltaOrientation))
 
     @staticmethod
