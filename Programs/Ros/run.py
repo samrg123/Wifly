@@ -1,7 +1,6 @@
 from system.RobotSystem import *
 from world.world2d import *
 
-
 def main():
     
     world = world2d()

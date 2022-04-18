@@ -18,7 +18,7 @@ class RobotState:
                  position = np.zeros(3), orientation = np.zeros(3), velocity = np.zeros(3),
                  positionCovariance = np.zeros(3), orientationCovariance = np.zeros(3), velocityCovariance = np.zeros(3)):
         
-        self._mean = np.diag(np.ones((5)))
+        self._mean = np.diag(np.ones(5))
         self._rotationMatrix = self._mean[0:3, 0:3] 
         self._velocity       = self._mean[0:3, 3]
         self._position       = self._mean[0:3, 4]

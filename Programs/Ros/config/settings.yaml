@@ -63,14 +63,33 @@ sensorNoise: [
 ]
 
 dataType: "log"
-# dataSensorValueLog: "../shubhamCircle4.log"
-# dataSensorValueLog: "../deskCircle1.log"
+
+
+# TODO: fine tune this once we add rviz update rate
+dataMocapTimeOffset: 5.
 dataSensorValueLog: "../mocap_20ms_1.log"
 dataMocapLog: "../20ms_start479818817.csv"
+
+# # TODO: fine tune this once we add rviz update rate
+# dataMocapTimeOffset: -0.5
+# dataSensorValueLog: "../mocap_6ms_1.log"
+# dataMocapLog: "../6ms_start2939061327.csv"
+
+# dataMocapTimeOffset: 0
+# dataSensorValueLog: "../mocap3dBlocker_6ms_1.log"
+# dataMocapLog: "../6ms_obstacle_start1280026682.csv"
+
+# dataMocapTimeOffset: 0
+# dataSensorValueLog: "../mocap3d_6ms_1.log"
+# dataMocapLog: "../6ms_3D_start691620221.csv"
+
+
+# dataSensorValueLog: "../shubhamCircle4.log"
+# dataSensorValueLog: "../deskCircle1.log"
 # dataSensorValueLog: "../sampleData1.log"
 
-dataMocapTimeOffset: -1
-
+# TODO: Add Rviz update Rate
+# TODO: Add projectZAxis
 constrainZAxis: true
 computeBiasAndMeanSamples: 50
 

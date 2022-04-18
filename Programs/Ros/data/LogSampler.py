@@ -236,19 +236,18 @@ class LogSampler:
             
             groundTruth1 = self.groundTruthStates[self.groundTruthIndex]
             groundTruth2 = groundTruth1
-            
+        
             # Find first groundTruth pair that spans sensorValue
-            self.groundTruthIndex+= 1
             while self.groundTruthTime < self.sensorTime and \
-                self.groundTruthIndex < len(self.groundTruthStates): 
+                  self.groundTruthIndex < len(self.groundTruthStates) - 1: 
 
                 groundTruth1 = groundTruth2
+                
+                self.groundTruthIndex+= 1
                 groundTruth2 = self.groundTruthStates[self.groundTruthIndex]
 
-                self.groundTruthIndex+= 1
                 self.groundTruthTime+= (groundTruth2.timestamp - groundTruth1.timestamp)
                         
-
             if groundTruth1.timestamp == groundTruth2.timestamp:
                 groundTruthState = groundTruth1
 
@@ -259,6 +258,8 @@ class LogSampler:
                 # groundTruthState = t * (groundTruth2 - groundTruth1) + groundTruth1
                 groundTruthState = groundTruth1
                 
+        # print(f"SensorTime: {self.sensorTime} | GtTime: {self.groundTruthTime}")
+
         sample = DataSample(
             deltaT = deltaT,
             sensorValue = sensorValue,
