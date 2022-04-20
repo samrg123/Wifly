@@ -32,6 +32,7 @@ robotMotionNoise: [
 ]
 
 # # Simulated Sensor Noise in robot frame
+# # Note: These values yield good results with simulation data
 # sensorNoise: [
 #   [ 
 #     [-0.5, -0.5, -0.5], # gyroscope mean
@@ -47,28 +48,42 @@ robotMotionNoise: [
 #   ],  
 # ]
 
+# Mocap sensor noise
 sensorNoise: [
   [ 
     [0, 0, 0], # gyroscope mean
-    [.0005, .0005, .0005], # gyroscope variance - Note: datasheet says .05 deg/sec, this is in (radians/sec)^2
+    [0, 0, .12], # gyroscope variance - Note: datasheet says .05 deg/sec, this is in (radians/sec)^2
   ],         
   [ 
-    [0, 0, 0], # accelerometer mean
-    [2, 2, 2], # accelerometer variance - Note: datasheet says PSD = 400ug/sqrt(Hz) .. Variance ~2PSD*Bandlimit (bandlimit is 260Hz)
+    # [-0.5, 0.3, 0], # acceerometer mean
+    # [0, 0, 0], # acceerometer mean
+    [0.35, -0.4, 0], # acceerometer mean
+    [17, 17, 0], # accelerometer variance - Note: datasheet says PSD = 400ug/sqrt(Hz) .. Variance ~2PSD*Bandlimit (bandlimit is 260Hz)
   ],
   [ 
     [0], # rssi mean
-    [10], # rssi variance
+    [5.5], # rssi variance
   ],  
 ]
 
 dataType: "log"
 
-
-# TODO: fine tune this once we add rviz update rate
-dataMocapTimeOffset: 5.
+dataStartOffset: 17
+# dataStartOffset: 7
+# dataStartOffset: 4
+biasSampleOffset: 0
+dataMocapTimeOffset: .85 # NOTE: TUNED BY HAND WITH GYRO
 dataSensorValueLog: "../mocap_20ms_1.log"
 dataMocapLog: "../20ms_start479818817.csv"
+wifiMap: "wifiMap.png.txt"
+wifiMapResolution: .1
+wifiMapOrigin: [-2.5, -2.5, 0]
+computeInitialStateSamples: 3
+computeBiasSamples: 300
+# computeBiasSamples: 180
+# computeBiasSamples: 20
+# computeBiasSamples: 5
+# computeBiasSamples: 1
 
 # # TODO: fine tune this once we add rviz update rate
 # dataMocapTimeOffset: -0.5
@@ -84,49 +99,47 @@ dataMocapLog: "../20ms_start479818817.csv"
 # dataMocapLog: "../6ms_3D_start691620221.csv"
 
 
+# dataSensorValueLog: "../sampleData1.log"
+# computeBiasSamples: 10
+# computeInitialStateSamples: 10
+
 # dataSensorValueLog: "../shubhamCircle4.log"
 # dataSensorValueLog: "../deskCircle1.log"
-# dataSensorValueLog: "../sampleData1.log"
 
-# TODO: Add Rviz update Rate
 # TODO: Add projectZAxis
 constrainZAxis: true
-computeBiasAndMeanSamples: 50
+realtimeSim: false
+rvizFPSLimit: 5
+
 
 ### Robot System ###
 filter_name: "TestFilter" 
-# numParticles: 25
-numParticles: 1
-wifiCovariance: 20
+numParticles: 50
+wifiCovariance: 5.5
 
 alphas_sqrt: [
   0,  0,  0, 
   0,  0,  0
 ]
 
+# # Note: For simulation data
 # initial_state_vals: [
 #   0, 0,   0, # orientation
 #   0, 0,   0, # velocity
-#   5, 6.5, 0  # position 
+#   21, 12, 0  # position 
 # ]
 
 initial_state_vals: [
-  0, 0,   0, # orientation
-  0, 0,   0, # velocity
-  21, 12, 0  # position 
+  0,  0,  0, # orientation
+  0,  0,  0, # velocity
+  0,  0,  0  # position 
 ]
-
-# initial_state_vals: [
-#   0, 0,  0, # orientation
-#   0, 0,  0, # velocity
-#   0, 0,  0  # position 
-# ]
 
 # Note: in sqrt values
 initial_state_variance: [
-  0, 0, .01, # orientation
-  .08, .08, 0, # velocity
-  .08, .08, 0  # position 
+  0, 0,  .6, # orientation
+  13, 13, 0, # velocity
+  2.5, 2.5, 0  # position 
 ] 
 
 ### path publisher ###

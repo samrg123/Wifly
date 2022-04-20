@@ -17,8 +17,11 @@ class LogSampler:
         self.params = params
         self.system = system
 
-        self.mocapTimeOffset = GetParam(params, "dataMocapTimeOffset", 0) 
-        
+        self.dataStartOffset = GetParam(params, "dataStartOffset", 0)
+        self.biasSampleOffset = GetParam(params, "biasSampleOffset", self.dataStartOffset)
+    
+        self.mocapTimeOffset = GetParam(params, "dataMocapTimeOffset", 0)
+
         self.mocapFileName       = GetParam(params, "dataMocapLog") 
         self.sensorValueFileName = GetParam(params, "dataSensorValueLog") 
         self.serverMsgPrefix     = GetParam(params, "serverMsgPrefix", "<- ")
@@ -36,8 +39,11 @@ class LogSampler:
 
         self.groundTruthStates = []
 
-        vectorConstraint, orientationConstraint = self.system.GetConstraints()
+        # offsetRotationAngles = np.array(np.radians([180, 0, 0]))
+        # offsetRotation = Rotation.from_euler("xyz", offsetRotationAngles)
 
+        offsetRotation = None
+        vectorConstraint, orientationConstraint = self.system.GetConstraints()
         with open(path, newline='') as file:
             csvReader = csv.reader(file, delimiter = ',')
 
@@ -48,7 +54,22 @@ class LogSampler:
                 timestamp = int(row[1]) * 1e-6
                 position = np.array([ float(s) for s in row[2:5] ]) 
                 quaternion = np.array([ float(s) for s in row[5:9] ])
-                valid = bool(row[9])
+                valid = int(row[9]) == 1
+
+                if valid == False:
+                    continue
+
+                # Note: Mocap data has z-axis pointing up so we negate it to match
+                #       rviz/wifly coordniate system 
+                position[0]*= -1
+                # position[1]*= -1
+                position[2]*= -1
+                # position[0], position[1] = position[1], position[0]
+
+                # quaternion[0], quaternion[1] = quaternion[1], quaternion[0] 
+                # quaternion[1]*= -1 
+                # quaternion[2]*= -1 
+                # quaternion*= -1 
 
                 # TODO: compute velocity
                 velocity = np.zeros(3)
@@ -59,8 +80,18 @@ class LogSampler:
                 )
 
                 state.timestamp = timestamp
-                roationAngles = Rotation.from_quat(quaternion).as_euler("xyz") * orientationConstraint
-                rotationMatrix = Rotation.from_euler("xyz", roationAngles).as_matrix()
+                mocapRoatation = Rotation.from_quat(quaternion)
+                roationAngles = mocapRoatation.as_euler("xyz")
+                constrainedRotation = Rotation.from_euler("xyz", roationAngles * orientationConstraint)
+            
+                if offsetRotation is None:
+                    # offsetRotation = Rotation.identity()
+                    offsetRotation = Rotation.from_euler("xyz", np.radians([0, 0, 0])) * constrainedRotation.inv()
+                    # offsetRotation = Rotation.from_euler("xyz", np.radians([0, 0, 180])) * Rotation.from_euler("xyz", roationAngles).inv()
+
+
+                rotationMatrix = (offsetRotation * constrainedRotation).as_matrix()
+                
                 state.SetRotationMatrix(rotationMatrix)
 
                 self.groundTruthStates = np.append(self.groundTruthStates, state)
@@ -106,8 +137,10 @@ class LogSampler:
                     # filter out all reapeated sensor values
                     if lastTimestamp != timestamp:                                
                         
+                        # Note: linearAcceleration is measured in g's with 1g = -9.8 so we multiply by -1
+                        #       to get acceleration in direction of axies 
                         sensorValue = SensorValue(
-                            linearAcceleration = linearAcceleration * vectorConstraint,
+                            linearAcceleration = -1 * linearAcceleration * vectorConstraint,
                             angularVelocity    = angularVelocity * orientationConstraint,
                             rssi = rssi
                         )
@@ -209,22 +242,32 @@ class LogSampler:
             self.Reset()
             self.system.wifiMap = WifiMap.FromDataSamples(dataSamples)
         
-    def GetSample(self):
-
-        # Get Sensor Sample
-        if self.sensorValues is None or self.sensorIndex >= len(self.sensorValues):
+    def GetSample(self, sampleType = DataSample.Type.Default):
+        
+        if self.sensorValues is None:
             return False
 
-        sensorValue = self.sensorValues[self.sensorIndex]
-        if self.sensorIndex == 0:
-            deltaT = 0
+        # Get Sensor Sample
+        deltaT = 0
+        sensorValue = None
 
-        else:
-            prevSensorValue = self.sensorValues[self.sensorIndex-1]
-            deltaT = sensorValue.timestamp - prevSensorValue.timestamp
+        isBiasSample = sampleType == DataSample.Type.ComputeBias
+        sampleTimeOffset = self.biasSampleOffset if isBiasSample else self.dataStartOffset
+        while True:
 
-        self.sensorIndex+= 1
-        self.sensorTime+= deltaT
+            if self.sensorIndex >= len(self.sensorValues):
+                return False 
+
+            sensorValue = self.sensorValues[self.sensorIndex]
+            if self.sensorIndex > 0:
+                prevSensorValue = self.sensorValues[self.sensorIndex-1]
+                deltaT = sensorValue.timestamp - prevSensorValue.timestamp
+        
+            self.sensorIndex+= 1
+            self.sensorTime+= deltaT
+
+            if self.sensorTime >= sampleTimeOffset:
+                break
 
         if self.groundTruthStates is None:
             groundTruthState = RobotState()
@@ -254,12 +297,10 @@ class LogSampler:
             else:
 
                 # interpolate groundTruthState
-                t = np.clip(0, 1, (self.groundTruthTime - self.sensorTime) / (groundTruth2.timestamp - groundTruth1.timestamp))
-                # groundTruthState = t * (groundTruth2 - groundTruth1) + groundTruth1
-                groundTruthState = groundTruth1
+                t = 1 - np.clip(0, 1, (self.groundTruthTime - self.sensorTime) / (groundTruth2.timestamp - groundTruth1.timestamp))
+                groundTruthState = RobotState.Lerp(t, groundTruth1, groundTruth2)
+                # groundTruthState = groundTruth1
                 
-        # print(f"SensorTime: {self.sensorTime} | GtTime: {self.groundTruthTime}")
-
         sample = DataSample(
             deltaT = deltaT,
             sensorValue = sensorValue,

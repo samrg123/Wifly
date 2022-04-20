@@ -156,7 +156,7 @@ class DataSimulator:
         self.sensorValues       = self.ComputeSensorValues(self.groundTruthStates, self.sensorNoise)
 
 
-    def GetSample(self):
+    def GetSample(self, type = DataSample.Type.Default):
 
         i = self.sampleIndex
         if i >= self.numSamples:

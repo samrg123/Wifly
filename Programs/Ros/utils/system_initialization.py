@@ -15,13 +15,13 @@ class system_initialization:
 
         self.wifiMap = WifiMap()
 
-        self.gyroBias          = GetParam(params, "gyroBias",     np.zeros(3))
-        self.velocityBias      = GetParam(params, "velocityBias", np.zeros(3))
-        self.accelerometerBias = GetParam(params, "acclerometerBias", np.array([0, 0, gForceOfGravity]))
-
         self.constrainZAxis = GetParam(params, "constrainZAxis", False)
 
         vectorMultiplier, orientationMultiplier = self.GetConstraints()
+
+        self.gyroBias          = orientationMultiplier * GetParam(params, "gyroBias",     np.zeros(3))
+        self.velocityBias      = vectorMultiplier      * GetParam(params, "velocityBias", np.zeros(3))
+        self.accelerometerBias = vectorMultiplier      * GetParam(params, "acclerometerBias", np.array([0, 0, gForceOfGravity]))
 
         init_state_vals = np.array(params['initial_state_vals'])
         self.initialState = RobotState(

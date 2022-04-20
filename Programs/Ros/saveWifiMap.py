@@ -35,8 +35,8 @@ def main():
     
     robot_system = RobotSystem(world)
 
-    robot_system.system.wifiMap.SaveToPng(
-        path = args.path[0],
+    robot_system.system.wifiMap.RenderMap(
+        pngPath = args.path[0],
         resolution = args.resolution, 
         pixelSize = args.pixelSize[0], 
         origin = args.origin,            

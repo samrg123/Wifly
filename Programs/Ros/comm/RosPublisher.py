@@ -7,8 +7,11 @@ import system.RobotState
 
 class RosPublisher:
 
-    def __init__(self, frameId):
+    def __init__(self, frameId, frameTimeLimit):
         self.frameId = frameId
+        
+        self.frameTimeLimit = rospy.Duration(frameTimeLimit)
+        self.lastUpdateTime = rospy.Time(0)
 
     def StateToPose(self, state):
 
@@ -28,4 +31,16 @@ class RosPublisher:
         pose.pose.orientation.z = quat[2]
         pose.pose.orientation.w = quat[3]
 
-        return pose     
+        return pose
+    
+    def TryUpdate(self, updateFunction):
+
+        currentTime = rospy.get_rostime()
+        deltaT = currentTime - self.lastUpdateTime
+        
+        if deltaT >= self.frameTimeLimit:
+            updateFunction()
+            self.lastUpdateTime = currentTime
+            return True
+
+        return False

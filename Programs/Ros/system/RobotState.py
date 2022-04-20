@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.transform import Rotation
+from scipy.spatial.transform import Slerp
 import rospy
 import yaml
 
@@ -77,6 +78,30 @@ class RobotState:
 
     # def __sub__(self, scaler):
     #     return RobotState.FromMean(self._mean * scaler)
+
+    @staticmethod
+    def Lerp(time, state1, state2):
+
+        r = RobotState(
+            position = time * (state2._position - state1._position) + state1._position,
+            velocity = time * (state2._velocity - state1._velocity) + state1._velocity
+        )
+
+        r.SetCovariance( time * (state2._covariance - state1._covariance) + state1._covariance)        
+
+        state1Rotation = Rotation.from_matrix(state1._rotationMatrix)
+        state2Rotation = Rotation.from_matrix(state2._rotationMatrix)
+
+        slepKeyRotations = Rotation.concatenate([state1Rotation, state2Rotation])
+
+        slerp = Slerp([0, 1], slepKeyRotations)
+
+        newRotation = slerp([time])  
+        newRotationMatrix = newRotation.as_matrix()
+    
+        r.SetRotationMatrix(newRotationMatrix)
+    
+        return r
 
 
     def GetAdjoint(self):

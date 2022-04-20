@@ -6,22 +6,26 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 
 class PoseWithCovariancePublisher(RosPublisher):
 
-    def __init__(self, frameId, poseTopicId, queueSize = 10):
+    def __init__(self, frameId, topicId, queueSize = 1, frameTimeLimit = 1./30):
         
-        super().__init__(frameId)
+        super().__init__(frameId, frameTimeLimit)
 
-        self.pose_pub = rospy.Publisher(poseTopicId, PoseWithCovarianceStamped, queue_size = queueSize)
+        self.pose_pub = rospy.Publisher(topicId, PoseWithCovarianceStamped, queue_size = queueSize)
 
     def PublishState(self, state):
 
-        msg = PoseWithCovarianceStamped()
-        msg.header.stamp = rospy.get_rostime()
-        msg.header.frame_id = self.frameId
-        msg.pose.pose = self.StateToPose(state).pose
+        def updateFunction():
 
-        # We wish to visualize 3 sigma contour
-        cov = np.zeros((6,6))
-        cov[0:2,0:2] = state.GetPositionCovariance()[0:2,0:2]
-        msg.pose.covariance = np.reshape(9*cov,(-1,)).tolist()
-            
-        self.pose_pub.publish(msg)
+            msg = PoseWithCovarianceStamped()
+            msg.header.stamp = rospy.get_rostime()
+            msg.header.frame_id = self.frameId
+            msg.pose.pose = self.StateToPose(state).pose
+
+            # We wish to visualize 3 sigma contour
+            cov = np.zeros((6,6))
+            cov[0:2,0:2] = state.GetPositionCovariance()[0:2,0:2]
+            msg.pose.covariance = np.reshape(9*cov,(-1,)).tolist()
+                
+            self.pose_pub.publish(msg)
+
+        self.TryUpdate(updateFunction)

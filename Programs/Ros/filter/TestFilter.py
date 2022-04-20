@@ -26,6 +26,8 @@ class TestFilter:
         self.state = RobotState.Copy(initialState)
         self.integrationState = RobotState.Copy(initialState)
 
+        print(f"INIT STATE: {self.state}")
+
         initialMean       = initialState.GetMean()
         initialCovariance = initialState.GetCovariance()
 

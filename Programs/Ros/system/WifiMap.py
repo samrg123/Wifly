@@ -90,7 +90,7 @@ class WifiMap:
             self.wifiPositionTree = KDTree(initialTreeValues, leaf_size=4)
 
             self.QueryWifi = self.QueryWifiKdTree
-
+    
     @staticmethod
     def FromDataSamples(dataSamples):
 
@@ -213,8 +213,8 @@ class WifiMap:
             rssi = result.intensity
         )
 
-    def SaveToPng(self, 
-                  path, 
+    def RenderMap(self, 
+                  pngPath,
                   resolution = [800, 600], 
                   pixelSize = .01, 
                   origin = [0, 0, 0],
@@ -303,9 +303,6 @@ class WifiMap:
         m.set_array([])
         plt.colorbar(m)
 
-        # plt.imshow(wifiRssi, origin='lower', cmap="magma")
-        # plt.colorbar()
-
         if(plotSamples):
             ax.scatter(wifiPositions[:, 0], wifiPositions[:, 1], wifiPositions[:, 2], marker='.', s=1, c='green')
 
@@ -319,6 +316,11 @@ class WifiMap:
         # ax.yaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
         # ax.zaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
 
+        # save txt
+        np.savetxt(pngPath + ".txt", wifiRssi, header = f"Resolution: {resolution} | pixelSize: {pixelSize} | origin: {origin}")
+
         # Save png 
-        plt.savefig(path, format="png", dpi=600, bbox_inches="tight")
+        plt.savefig(pngPath, format="png", dpi=600, bbox_inches="tight")
+        print(f"Saved Redered Map to: {pngPath}")
+
         plt.show()
