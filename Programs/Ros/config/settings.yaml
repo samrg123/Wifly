@@ -76,7 +76,7 @@ dataMocapTimeOffset: .85 # NOTE: TUNED BY HAND WITH GYRO
 dataSensorValueLog: "../mocap_20ms_1.log"
 dataMocapLog: "../20ms_start479818817.csv"
 wifiMap: "wifiMap.png.txt"
-wifiMapResolution: .1
+wifiMapResolution: .01
 wifiMapOrigin: [-2.5, -2.5, 0]
 computeInitialStateSamples: 3
 computeBiasSamples: 300
