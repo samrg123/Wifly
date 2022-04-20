@@ -82,6 +82,10 @@ class RobotSystem:
 
     def run_filter(self):
         
+        gtStates = np.array([], dtype='object')
+        pfStates = np.array([], dtype='object')
+        integrationStates = np.array([], dtype='object')
+
         loopTime = rospy.get_rostime()
         while True:
             sample = self.data_handler.dataSampler.GetSample()
@@ -123,14 +127,20 @@ class RobotSystem:
             integrationState = self.filter.GetIntegrationState()
             self.integrationPath.PublishState(integrationState)
 
-            # print("DELTA: ", sample.deltaT)
-            print("SENSOR:", sample.sensorValue)
-            # print("CORRET:", correctedSensorValue)
-            # print("CMD:   ", sample.commandState)
-            print("GT:    ", sample.groundTruthState)
-            print("N_PRED:", predictedState)
-            print("INT:   ", integrationState)
-            # print("")
+            # Record all samples in array
+            gtStates          = np.append(gtStates, RobotState.Copy(sample.groundTruthState))
+            pfStates          = np.append(gtStates, RobotState.Copy(esitmatedState))
+            integrationStates = np.append(gtStates, RobotState.Copy(integrationState))
+
+
+            # # print("DELTA: ", sample.deltaT)
+            # print("SENSOR:", sample.sensorValue)
+            # # print("CORRET:", correctedSensorValue)
+            # # print("CMD:   ", sample.commandState)
+            # print("GT:    ", sample.groundTruthState)
+            # print("N_PRED:", predictedState)
+            # print("INT:   ", integrationState)
+            # # print("")
 
 
             # print("Particles AFTER:")
@@ -154,7 +164,13 @@ class RobotSystem:
                             break
 
                 loopTime = endLoopTime
+
+        self.plotError(gtStates, integrationStates, pfStates)
     
+    def plotError(gtStates, integrationStates, pfStates):
+        # TODO: plot cumulative ABS MSE
+        pass
+
 def main():
     rob_sys = RobotSystem()
 
