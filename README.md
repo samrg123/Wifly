@@ -9,9 +9,9 @@ You can learn more about the project by clicking on the YouTube video here:
 [![Watch the video](https://img.youtube.com/vi/mg0gY1O2wWQ/maxresdefault.jpg)](https://www.youtube.com/watch?v=mg0gY1O2wWQ)
 
 Our project is also available to download with the following links:
-- [Presentation Video]("Media/Slides/The Wifly Final Presentation.mp4")
-- [Presentation Slides]("Media/Slides/The Wifly Slides.pdf")
-- [Research Paper]("The Wifly Research Paper.pdf")
+- [Presentation Video](Media/Slides/The%20Wifly%20Final%20Presentation.mp4)
+- [Presentation Slides](Media/Slides/The%20Wifly%20Slides.pdf)
+- [Research Paper](The%20Wifly%20Research%20Paper.pdf)
 
 
 |  The Team      |                    |                                                                  |                                       |                                  |
